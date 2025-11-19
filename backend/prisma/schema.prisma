@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  ORGANIZER
+  ADMIN
+  GUEST
+}
+
+enum ParticipationStatus {
+  REGISTERED
+  CONFIRMED
+  WAITLISTED
+  CANCELLED
+  ATTENDED
+}
+
+enum SportType {
+  FOOTBALL
+  BASKETBALL
+  VOLLEYBALL
+  TENNIS
+  RUNNING
+  CYCLING
+  OTHER
+}
+
+model User {
+  id                String          @id @default(uuid())
+  name              String
+  email             String          @unique
+  password          String
+  location          String?
+  role              UserRole        @default(USER)
+  preferences       Json?           // Sport preferences, notification settings
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  organizer         Organizer?
+  participations    Participation[]
+  notifications     Notification[]
+  bookmarkedEvents  EventBookmark[]
+  feedback          Feedback[]
+  
+  @@index([email])
+}
+
+model Organizer {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  contactInfo String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events      Event[]
+  
+  @@index([userId])
+}
+
+model Event {
+  id                String      @id @default(uuid())
+  name              String
+  description       String      @db.Text
+  date              DateTime
+  time              String
+  location          String
+  latitude          Float?
+  longitude         Float?
+  sportType         SportType
+  maxParticipants   Int
+  isRecurring       Boolean     @default(false)
+  recurringPattern  String?     // weekly, monthly, etc.
+  isSponsored       Boolean     @default(false)
+  sponsorDetails    Json?
+  imageUrl          String?
+  status            String      @default("active") // active, cancelled, completed
+  organizerId       String
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  organizer         Organizer        @relation(fields: [organizerId], references: [id])
+  participations    Participation[]
+  notifications     Notification[]
+  bookmarks         EventBookmark[]
+  feedback          Feedback[]
+  teams             Team[]
+  
+  @@index([organizerId])
+  @@index([date])
+  @@index([sportType])
+  @@index([location])
+}
+
+model Participation {
+  id          String              @id @default(uuid())
+  status      ParticipationStatus @default(REGISTERED)
+  userId      String
+  eventId     String
+  teamId      String?
+  registeredAt DateTime           @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  // Relations
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team        Team?               @relation(fields: [teamId], references: [id])
+  
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+}
+
+model Team {
+  id             String          @id @default(uuid())
+  name           String
+  eventId        String
+  createdAt      DateTime        @default(now())
+  
+  // Relations
+  event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participants   Participation[]
+  
+  @@index([eventId])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  message     String   @db.Text
+  type        String   // event_reminder, event_cancelled, event_updated, etc.
+  isRead      Boolean  @default(false)
+  userId      String
+  eventId     String?
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([eventId])
+}
+
+model EventBookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, eventId])
+  @@index([userId])
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  rating    Int      // 1-10 as per requirements
+  comment   String   @db.Text
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, eventId])
+  @@index([eventId])
+}
+

@@ -1,26 +1,35 @@
 {
-  "name": "demo-projekt",
-  "version": "0.1.0",
+  "name": "cc-sporting-events-monorepo",
+  "version": "1.0.0",
+  "description": "Community Connect: Sporting Events - Full Stack Application",
   "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "prisma:generate": "cd backend && npm run prisma:generate",
+    "prisma:migrate": "cd backend && npm run prisma:migrate",
+    "prisma:studio": "cd backend && npm run prisma:studio"
   },
-  "dependencies": {
-    "react": "^18",
-    "react-dom": "^18",
-    "next": "14.2.5"
-  },
+  "keywords": [
+    "sporting-events",
+    "community",
+    "express",
+    "react",
+    "typescript",
+    "monorepo"
+  ],
+  "author": "",
+  "license": "ISC",
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.5"
+    "concurrently": "^8.2.2"
   }
 }
