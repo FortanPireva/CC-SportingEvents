@@ -2,12 +2,15 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  type: 'user' | 'organizer';
+  role: 'USER' | 'ORGANIZER' | 'ADMIN' | 'GUEST';
+  location?: string;
+  preferences?: any;
+  createdAt: Date;
+  // Legacy support for old type field
+  type?: 'user' | 'organizer';
   avatar?: string;
   phone?: string;
-  location?: string;
-  preferences?: string[];
-  joinedAt: Date;
+  joinedAt?: Date;
 }
 
 export interface Event {

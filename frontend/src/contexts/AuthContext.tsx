@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthContextType, User } from '@/lib/types';
+import { authApi } from '@/lib/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -10,11 +11,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate checking for existing auth session
+    // Check for existing auth session
     const checkAuth = async () => {
-      const savedUser = localStorage.getItem('cc_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+      const token = localStorage.getItem('cc_auth_token');
+      if (token) {
+        try {
+          const response = await authApi.getMe();
+          if (response.success && response.data) {
+            const userData = response.data.user;
+            // Add legacy type field for backward compatibility
+            const userWithType = {
+              ...userData,
+              type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
+              joinedAt: new Date(userData.createdAt),
+            };
+            setUser(userWithType);
+          } else {
+            // Invalid token, clear it
+            localStorage.removeItem('cc_auth_token');
+            localStorage.removeItem('cc_user');
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          // Clear invalid auth data
+          localStorage.removeItem('cc_auth_token');
+          localStorage.removeItem('cc_user');
+        }
       }
       setIsLoading(false);
     };
@@ -25,25 +47,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await authApi.login({ email, password });
       
-      // Mock user data based on email
-      const mockUser: User = {
-        id: '1',
-        email,
-        name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        type: email.includes('organizer') ? 'organizer' : 'user',
-        avatar: `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150`,
-        joinedAt: new Date(),
-        location: 'San Francisco, CA',
-        preferences: ['Basketball', 'Soccer', 'Tennis']
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Login failed');
+      }
+
+      const { user: userData, token } = response.data;
+      
+      // Add legacy type field for backward compatibility
+      const userWithType = {
+        ...userData,
+        type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
+        joinedAt: new Date(userData.createdAt),
       };
       
-      setUser(mockUser);
-      localStorage.setItem('cc_user', JSON.stringify(mockUser));
-    } catch (error) {
-      throw new Error('Invalid credentials');
+      setUser(userWithType);
+      localStorage.setItem('cc_auth_token', token);
+      localStorage.setItem('cc_user', JSON.stringify(userWithType));
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      throw new Error(error.message || 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }
@@ -52,24 +76,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, name: string, type: 'user' | 'organizer') => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const newUser: User = {
-        id: Date.now().toString(),
-        email,
+      const role = type === 'organizer' ? 'ORGANIZER' : 'USER';
+      const response = await authApi.register({
         name,
-        type,
-        avatar: `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150`,
-        joinedAt: new Date(),
-        location: 'San Francisco, CA',
-        preferences: []
+        email,
+        password,
+        role,
+      });
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Registration failed');
+      }
+
+      const { user: userData, token } = response.data;
+      
+      // Add legacy type field for backward compatibility
+      const userWithType = {
+        ...userData,
+        type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
+        joinedAt: new Date(userData.createdAt),
       };
       
-      setUser(newUser);
-      localStorage.setItem('cc_user', JSON.stringify(newUser));
-    } catch (error) {
-      throw new Error('Registration failed');
+      setUser(userWithType);
+      localStorage.setItem('cc_auth_token', token);
+      localStorage.setItem('cc_user', JSON.stringify(userWithType));
+    } catch (error: any) {
+      console.error('Sign up error:', error);
+      throw new Error(error.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -77,12 +110,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = () => {
     setUser(null);
+    localStorage.removeItem('cc_auth_token');
     localStorage.removeItem('cc_user');
   };
 
   const resetPassword = async (email: string) => {
-    // Simulate API call
+    // TODO: Implement password reset API call
     await new Promise(resolve => setTimeout(resolve, 1000));
+    throw new Error('Password reset is not yet implemented');
   };
 
   return (

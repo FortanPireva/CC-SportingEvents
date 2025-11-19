@@ -3,8 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 
-// Import routes (will be created later)
-// import authRoutes from './routes/auth.routes';
+// Import routes
+import authRoutes from './routes/auth.routes';
 // import eventRoutes from './routes/event.routes';
 // import userRoutes from './routes/user.routes';
 // import participationRoutes from './routes/participation.routes';
@@ -25,8 +25,8 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'CC Sporting Events API is running' });
 });
 
-// Routes (uncomment as you implement them)
-// app.use('/api/auth', authRoutes);
+// Routes
+app.use('/api/auth', authRoutes);
 // app.use('/api/events', eventRoutes);
 // app.use('/api/users', userRoutes);
 // app.use('/api/participations', participationRoutes);
