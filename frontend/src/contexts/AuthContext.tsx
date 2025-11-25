@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Add legacy type field for backward compatibility
             const userWithType = {
               ...userData,
+              createdAt: new Date(userData.createdAt),
               type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
               joinedAt: new Date(userData.createdAt),
             };
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Add legacy type field for backward compatibility
       const userWithType = {
         ...userData,
+        createdAt: new Date(userData.createdAt),
         type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
         joinedAt: new Date(userData.createdAt),
       };
@@ -93,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Add legacy type field for backward compatibility
       const userWithType = {
         ...userData,
+        createdAt: new Date(userData.createdAt),
         type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
         joinedAt: new Date(userData.createdAt),
       };
@@ -115,9 +118,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    // TODO: Implement password reset API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    throw new Error('Password reset is not yet implemented');
+    setIsLoading(true);
+    try {
+      const response = await authApi.forgotPassword(email);
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to send password reset email');
+      }
+
+      // Success - email sent
+      return;
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      throw new Error(error.message || 'Failed to send password reset email');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPasswordWithToken = async (token: string, newPassword: string) => {
+    setIsLoading(true);
+    try {
+      const response = await authApi.resetPassword(token, newPassword);
+      
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to reset password');
+      }
+
+      // Success - password reset
+      return;
+    } catch (error: any) {
+      console.error('Reset password with token error:', error);
+      throw new Error(error.message || 'Failed to reset password');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyResetToken = async (token: string): Promise<boolean> => {
+    try {
+      const response = await authApi.verifyResetToken(token);
+      return response.success && response.data?.valid === true;
+    } catch (error: any) {
+      console.error('Verify reset token error:', error);
+      return false;
+    }
   };
 
   return (
@@ -127,7 +172,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
-      resetPassword
+      resetPassword,
+      resetPasswordWithToken,
+      verifyResetToken
     }}>
       {children}
     </AuthContext.Provider>

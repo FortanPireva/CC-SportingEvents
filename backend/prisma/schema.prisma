@@ -53,6 +53,7 @@ model User {
   notifications     Notification[]
   bookmarkedEvents  EventBookmark[]
   feedback          Feedback[]
+  passwordResetTokens PasswordResetToken[]
   
   @@index([email])
 }
@@ -184,5 +185,20 @@ model Feedback {
   
   @@unique([userId, eventId])
   @@index([eventId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
 }
 

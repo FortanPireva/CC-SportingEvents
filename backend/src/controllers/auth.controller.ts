@@ -140,5 +140,113 @@ export class AuthController {
       });
     }
   }
+
+  static forgotPasswordValidation = [
+    body('email')
+      .isEmail()
+      .withMessage('Valid email is required')
+      .normalizeEmail(),
+  ];
+
+  static async forgotPassword(req: Request, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const { email } = req.body;
+
+      const result = await AuthService.forgotPassword(email);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to process password reset request',
+      });
+    }
+  }
+
+  static resetPasswordValidation = [
+    body('token').notEmpty().withMessage('Reset token is required'),
+    body('newPassword')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters'),
+  ];
+
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const { token, newPassword } = req.body;
+
+      const result = await AuthService.resetPassword(token, newPassword);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+
+      if (error.message === 'Invalid or expired reset token') {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to reset password',
+      });
+    }
+  }
+
+  static verifyResetTokenValidation = [
+    body('token').notEmpty().withMessage('Reset token is required'),
+  ];
+
+  static async verifyResetToken(req: Request, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const { token } = req.body;
+
+      const result = await AuthService.verifyResetToken(token);
+
+      res.status(200).json({
+        success: true,
+        valid: result.valid,
+        message: result.message,
+      });
+    } catch (error: any) {
+      console.error('Verify reset token error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to verify reset token',
+      });
+    }
+  }
 }
 

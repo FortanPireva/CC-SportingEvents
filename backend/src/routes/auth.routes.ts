@@ -33,5 +33,38 @@ router.post(
  */
 router.get('/me', authenticate, AuthController.getMe);
 
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset email
+ * @access  Public
+ */
+router.post(
+  '/forgot-password',
+  AuthController.forgotPasswordValidation,
+  AuthController.forgotPassword
+);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password with token
+ * @access  Public
+ */
+router.post(
+  '/reset-password',
+  AuthController.resetPasswordValidation,
+  AuthController.resetPassword
+);
+
+/**
+ * @route   POST /api/auth/verify-reset-token
+ * @desc    Verify if reset token is valid
+ * @access  Public
+ */
+router.post(
+  '/verify-reset-token',
+  AuthController.verifyResetTokenValidation,
+  AuthController.verifyResetToken
+);
+
 export default router;
 

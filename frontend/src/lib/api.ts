@@ -73,6 +73,36 @@ class ApiClient {
 
 export const api = new ApiClient(API_URL);
 
+// Auth API response types
+export interface AuthUserData {
+  id: string;
+  name: string;
+  email: string;
+  role: 'USER' | 'ORGANIZER' | 'ADMIN' | 'GUEST';
+  location?: string;
+  createdAt: string;
+  preferences?: any;
+}
+
+export interface LoginResponse {
+  user: AuthUserData;
+  token: string;
+}
+
+export interface RegisterResponse {
+  user: AuthUserData;
+  token: string;
+}
+
+export interface GetMeResponse {
+  user: AuthUserData;
+}
+
+export interface VerifyResetTokenResponse {
+  valid: boolean;
+  message: string;
+}
+
 // Auth API endpoints
 export const authApi = {
   register: async (data: {
@@ -82,15 +112,27 @@ export const authApi = {
     location?: string;
     role?: 'USER' | 'ORGANIZER';
   }) => {
-    return api.post('/auth/register', data);
+    return api.post<RegisterResponse>('/auth/register', data);
   },
 
   login: async (data: { email: string; password: string }) => {
-    return api.post('/auth/login', data);
+    return api.post<LoginResponse>('/auth/login', data);
   },
 
   getMe: async () => {
-    return api.get('/auth/me');
+    return api.get<GetMeResponse>('/auth/me');
+  },
+
+  forgotPassword: async (email: string) => {
+    return api.post('/auth/forgot-password', { email });
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    return api.post('/auth/reset-password', { token, newPassword });
+  },
+
+  verifyResetToken: async (token: string) => {
+    return api.post<VerifyResetTokenResponse>('/auth/verify-reset-token', { token });
   },
 };
 
