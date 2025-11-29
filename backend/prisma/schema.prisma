@@ -189,7 +189,7 @@ model Feedback {
 
 model PasswordResetToken {
   id        String   @id @default(uuid())
-  token     String   @unique
+  otpCode   String?  // OTP code (6 digits) - optional for migration
   userId    String
   expiresAt DateTime
   isUsed    Boolean  @default(false)
@@ -198,7 +198,8 @@ model PasswordResetToken {
   // Relations
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  @@index([token])
+  @@index([otpCode])
   @@index([userId])
+  @@index([userId, otpCode])
 }
 

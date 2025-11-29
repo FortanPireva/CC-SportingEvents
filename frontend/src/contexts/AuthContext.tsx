@@ -136,10 +136,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const resetPasswordWithToken = async (token: string, newPassword: string) => {
+  const verifyOTP = async (email: string, otpCode: string): Promise<string> => {
     setIsLoading(true);
     try {
-      const response = await authApi.resetPassword(token, newPassword);
+      const response = await authApi.verifyOTP(email, otpCode);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Invalid or expired OTP code');
+      }
+
+      // Return userId for password reset
+      return response.data.userId;
+    } catch (error: any) {
+      console.error('Verify OTP error:', error);
+      throw new Error(error.message || 'Invalid or expired OTP code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPasswordWithToken = async (email: string, otpCode: string, newPassword: string) => {
+    setIsLoading(true);
+    try {
+      // First verify OTP to get userId
+      const userId = await verifyOTP(email, otpCode);
+      
+      // Then reset password with userId
+      const response = await authApi.resetPassword(userId, newPassword);
       
       if (!response.success) {
         throw new Error(response.error || 'Failed to reset password');
@@ -148,20 +171,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Success - password reset
       return;
     } catch (error: any) {
-      console.error('Reset password with token error:', error);
+      console.error('Reset password error:', error);
       throw new Error(error.message || 'Failed to reset password');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const verifyResetToken = async (token: string): Promise<boolean> => {
-    try {
-      const response = await authApi.verifyResetToken(token);
-      return response.success && response.data?.valid === true;
-    } catch (error: any) {
-      console.error('Verify reset token error:', error);
-      return false;
     }
   };
 
@@ -173,8 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signOut,
       resetPassword,
-      resetPasswordWithToken,
-      verifyResetToken
+      verifyOTP,
+      resetPasswordWithToken
     }}>
       {children}
     </AuthContext.Provider>

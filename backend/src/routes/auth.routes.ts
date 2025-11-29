@@ -35,7 +35,7 @@ router.get('/me', authenticate, AuthController.getMe);
 
 /**
  * @route   POST /api/auth/forgot-password
- * @desc    Request password reset email
+ * @desc    Request password reset OTP code via email
  * @access  Public
  */
 router.post(
@@ -45,25 +45,25 @@ router.post(
 );
 
 /**
+ * @route   POST /api/auth/verify-otp
+ * @desc    Verify OTP code for password reset
+ * @access  Public
+ */
+router.post(
+  '/verify-otp',
+  AuthController.verifyOTPValidation,
+  AuthController.verifyOTP
+);
+
+/**
  * @route   POST /api/auth/reset-password
- * @desc    Reset password with token
+ * @desc    Reset password after OTP verification
  * @access  Public
  */
 router.post(
   '/reset-password',
   AuthController.resetPasswordValidation,
   AuthController.resetPassword
-);
-
-/**
- * @route   POST /api/auth/verify-reset-token
- * @desc    Verify if reset token is valid
- * @access  Public
- */
-router.post(
-  '/verify-reset-token',
-  AuthController.verifyResetTokenValidation,
-  AuthController.verifyResetToken
 );
 
 export default router;

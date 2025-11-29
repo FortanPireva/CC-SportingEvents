@@ -98,10 +98,6 @@ export interface GetMeResponse {
   user: AuthUserData;
 }
 
-export interface VerifyResetTokenResponse {
-  valid: boolean;
-  message: string;
-}
 
 // Auth API endpoints
 export const authApi = {
@@ -127,12 +123,12 @@ export const authApi = {
     return api.post('/auth/forgot-password', { email });
   },
 
-  resetPassword: async (token: string, newPassword: string) => {
-    return api.post('/auth/reset-password', { token, newPassword });
+  verifyOTP: async (email: string, otpCode: string) => {
+    return api.post<{ userId: string }>('/auth/verify-otp', { email, otpCode });
   },
 
-  verifyResetToken: async (token: string) => {
-    return api.post<VerifyResetTokenResponse>('/auth/verify-reset-token', { token });
+  resetPassword: async (userId: string, newPassword: string) => {
+    return api.post('/auth/reset-password', { userId, newPassword });
   },
 };
 

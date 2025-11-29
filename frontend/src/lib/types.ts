@@ -54,6 +54,6 @@ export interface AuthContextType {
   signUp: (email: string, password: string, name: string, type: 'user' | 'organizer') => Promise<void>;
   signOut: () => void;
   resetPassword: (email: string) => Promise<void>;
-  resetPasswordWithToken: (token: string, newPassword: string) => Promise<void>;
-  verifyResetToken: (token: string) => Promise<boolean>;
+  verifyOTP: (email: string, otpCode: string) => Promise<string>; // Returns userId
+  resetPasswordWithToken: (email: string, otpCode: string, newPassword: string) => Promise<void>;
 }

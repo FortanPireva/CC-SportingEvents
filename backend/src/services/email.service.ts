@@ -15,28 +15,24 @@ export class EmailService {
   }
 
   /**
-   * Send password reset email
+   * Send password reset email with OTP code
    * @param to - Recipient email address
-   * @param resetToken - Password reset token
+   * @param otpCode - One-time password code (6 digits)
    * @param userName - Name of the user
    */
   static async sendPasswordResetEmail(
     to: string,
-    resetToken: string,
+    otpCode: string,
     userName: string
   ): Promise<void> {
     try {
       const resend = this.initialize();
-      
-      // Get the frontend URL from environment variables
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
       const { data, error } = await resend.emails.send({
         from: process.env.EMAIL_FROM || 'noreply@codepilot.dev',
         to: [to],
         subject: 'Reset Your Password - CC Sporting Events',
-        html: this.getPasswordResetTemplate(userName, resetUrl, resetToken),
+        html: this.getPasswordResetTemplate(userName, otpCode),
       });
 
       if (error) {
@@ -113,12 +109,11 @@ export class EmailService {
   }
 
   /**
-   * HTML template for password reset email
+   * HTML template for password reset email with OTP code
    */
   private static getPasswordResetTemplate(
     userName: string,
-    resetUrl: string,
-    resetToken: string
+    otpCode: string
   ): string {
     return `
 <!DOCTYPE html>
@@ -158,12 +153,15 @@ export class EmailService {
       display: inline-block;
       padding: 12px 30px;
       background-color: #2563eb;
-      color: #ffffff;
+      color: #ffffff !important;
       text-decoration: none;
       border-radius: 6px;
       font-weight: 600;
       text-align: center;
       margin: 20px 0;
+    }
+    .button a {
+      color: #ffffff !important;
     }
     .button:hover {
       background-color: #1d4ed8;
@@ -205,21 +203,19 @@ export class EmailService {
       <p>Hi ${userName},</p>
       <p>We received a request to reset your password for your CC Sporting Events account. If you didn't make this request, you can safely ignore this email.</p>
       
-      <p>To reset your password, click the button below:</p>
+      <p>Use the following one-time code to reset your password:</p>
       
-      <div style="text-align: center;">
-        <a href="${resetUrl}" class="button">Reset Password</a>
+      <div style="text-align: center; margin: 30px 0;">
+        <div class="token-box" style="font-size: 32px; font-weight: bold; letter-spacing: 8px; text-align: center; padding: 20px;">
+          ${otpCode}
+        </div>
       </div>
-      
-      <p>Or copy and paste this link into your browser:</p>
-      <div class="token-box">${resetUrl}</div>
       
       <div class="warning">
-        <strong>⚠️ Security Notice:</strong> This link will expire in 1 hour. For your security, never share this link with anyone.
+        <strong>⚠️ Security Notice:</strong> This code will expire in 15 minutes and can only be used once. For your security, never share this code with anyone.
       </div>
       
-      <p>If you're having trouble with the button above, you can also use this reset token directly:</p>
-      <div class="token-box">${resetToken}</div>
+      <p>Enter this code on the password reset page to set a new password for your account.</p>
     </div>
     
     <div class="footer">
