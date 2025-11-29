@@ -13,6 +13,9 @@ import CommunityPage from '@/pages/dashboard/CommunityPage';
 import ReviewsPage from '@/pages/dashboard/ReviewsPage';
 import HomePage from './pages/HomePage';
 import VigiPage from './pages/VigiPage';
+import MyEventsPage from './pages/dashboard/MyEventsPage';
+import CreateEventPage from './pages/dashboard/CreateEventPage';
+import ParticipantsPage from './pages/dashboard/ParticipantsPage';
 
 function App() {
   return (
@@ -30,6 +33,9 @@ function App() {
         <Route path="/dashboard/venues" element={<VenuesPage />} />
         <Route path="/dashboard/community" element={<CommunityPage />} />
         <Route path="/dashboard/reviews" element={<ReviewsPage />} />
+        <Route path="/dashboard/my-events" element={<MyEventsPage />} />
+        <Route path="/dashboard/create-event" element={<CreateEventPage />} />
+        <Route path="/dashboard/participants" element={<ParticipantsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />

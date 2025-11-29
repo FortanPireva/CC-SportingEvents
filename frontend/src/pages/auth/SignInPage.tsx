@@ -123,15 +123,6 @@ export default function SignInPage() {
                 </Link>
               </p>
             </div>
-
-            {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</p>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>User:</strong> user@demo.com / password123</p>
-                <p><strong>Organizer:</strong> organizer@demo.com / password123</p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
