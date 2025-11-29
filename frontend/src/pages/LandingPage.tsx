@@ -150,7 +150,7 @@ export default function LandingPage() {
             <span className="text-xl font-semibold">CC: Sporting Events</span>
           </div>
           <div className="text-center text-gray-400">
-            <p>&copy; 2024 Community Connect: Sporting Events. Bringing communities together through sports.</p>
+            <p>&copy; {new Date().getFullYear()} Community Connect: Sporting Events. Bringing communities together through sports.</p>
           </div>
         </div>
       </footer>

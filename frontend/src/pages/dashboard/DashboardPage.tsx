@@ -18,9 +18,11 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Event } from '@/lib/types';
+import { useNavigate } from 'react-router-dom';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Mock data for demonstration
   const upcomingEvents: Event[] = [
@@ -106,7 +108,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="mt-4 md:mt-0">
-            <Button className="w-full md:w-auto">
+            <Button className="w-full md:w-auto" onClick={() => user?.type === 'organizer' ? navigate('/dashboard/create-event') : navigate('/dashboard/events')}>
               <Plus className="mr-2 h-4 w-4" />
               {user?.type === 'organizer' ? 'Create Event' : 'Find Events'}
             </Button>
@@ -213,7 +215,7 @@ export default function DashboardPage() {
               <CardContent className="space-y-3">
                 {user?.type === 'organizer' ? (
                   <>
-                    <Button className="w-full justify-start">
+                    <Button className="w-full justify-start" onClick={() => navigate('/dashboard/create-event')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Event
                     </Button>

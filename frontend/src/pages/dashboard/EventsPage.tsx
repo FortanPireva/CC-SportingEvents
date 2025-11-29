@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
@@ -21,27 +22,71 @@ import {
   TrendingUp,
   Eye,
   Heart,
-  Share2
+  Share2,
+  Loader2,
+  Plus
 } from 'lucide-react';
-import { mockEvents } from '@/lib/mockData';
-import { Event } from '@/lib/types';
+import { eventService, Event } from '@/services/event.service';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function EventsPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSport, setSelectedSport] = useState('all');
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const upcomingEvents = mockEvents.filter(event => event.status === 'upcoming');
-  const pastEvents = mockEvents.filter(event => event.status === 'completed');
+  // Fetch all events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setIsLoading(true);
+      try {
+        const response = await eventService.getEvents({ 
+          status: 'active',
+          limit: 100 
+        });
+        if (response.success && response.data) {
+          setEvents(response.data.events);
+        }
+      } catch (error) {
+        console.error('Failed to fetch events:', error);
+        toast.error('Failed to load events');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const filterEvents = (events: Event[]) => {
-    return events.filter(event => {
-      const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    fetchEvents();
+  }, []);
+
+  // Map backend status to frontend status
+  const mapStatus = (status: string): 'upcoming' | 'ongoing' | 'completed' | 'cancelled' => {
+    switch (status) {
+      case 'active':
+        return 'upcoming';
+      case 'cancelled':
+        return 'cancelled';
+      case 'completed':
+        return 'completed';
+      default:
+        return 'upcoming';
+    }
+  };
+
+  const upcomingEvents = events.filter(event => mapStatus(event.status) === 'upcoming');
+  const pastEvents = events.filter(event => mapStatus(event.status) === 'completed');
+
+  const filterEvents = (eventsList: Event[]) => {
+    return eventsList.filter(event => {
+      const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           event.sport.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSport = selectedSport === 'all' || event.sport === selectedSport;
-      const matchesSkill = selectedSkillLevel === 'all' || event.skill_level === selectedSkillLevel;
+                           event.sportType.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSport = selectedSport === 'all' || event.sportType === selectedSport;
+      const matchesSkill = selectedSkillLevel === 'all' || event.skillLevel === selectedSkillLevel;
       
       return matchesSearch && matchesSport && matchesSkill;
     }).sort((a, b) => {
@@ -62,125 +107,152 @@ export default function EventsPage() {
   const filteredPastEvents = filterEvents(pastEvents);
 
   const stats = [
-    { title: 'Total Events', value: mockEvents.length.toString(), icon: Calendar, trend: '+12% this month' },
-    { title: 'Active Participants', value: '247', icon: Users, trend: '+18% this week' },
-    { title: 'Average Rating', value: '4.7', icon: Star, trend: '+0.3 this month' },
-    { title: 'Revenue Generated', value: '$3,240', icon: DollarSign, trend: '+25% this month' }
+    { title: 'Total Events', value: events.length.toString(), icon: Calendar, trend: `${upcomingEvents.length} upcoming` },
+    { title: 'Active Participants', value: events.reduce((sum, e) => sum + e.currentParticipants, 0).toString(), icon: Users, trend: 'Across all events' },
+    { title: 'Sports Available', value: [...new Set(events.map(e => e.sportType))].length.toString(), icon: Star, trend: 'Different sports' },
+    { title: 'Avg. Price', value: events.length > 0 ? `$${(events.filter(e => e.price).reduce((sum, e) => sum + (e.price || 0), 0) / (events.filter(e => e.price).length || 1)).toFixed(2)}` : '$0', icon: DollarSign, trend: 'Per event' }
   ];
 
-  const sports = ['all', ...Array.from(new Set(mockEvents.map(event => event.sport)))];
+  // Get unique sports from events
+  const sports: string[] = ['all', ...Array.from(new Set(events.map(event => event.sportType)))];
   const skillLevels = ['all', 'beginner', 'intermediate', 'advanced'];
 
-  const EventCard = ({ event }: { event: Event }) => (
-    <Card className="hover:shadow-lg transition-shadow group">
-      <div className="relative">
-        {event.image && (
-          <div className="h-48 bg-gray-200 rounded-t-lg overflow-hidden">
-            <img 
-              src={event.image} 
-              alt={event.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          </div>
-        )}
-        <div className="absolute top-4 right-4">
-          <Badge variant={event.status === 'upcoming' ? 'default' : 'secondary'}>
-            {event.status}
-          </Badge>
-        </div>
-      </div>
-      
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-1">{event.title}</CardTitle>
-            <CardDescription className="text-sm line-clamp-2">
-              {event.description}
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="ml-2">
-            {event.sport}
-          </Badge>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <Calendar className="mr-1 h-4 w-4" />
-                {event.date.toLocaleDateString()}
-              </div>
-              <div className="flex items-center">
-                <Clock className="mr-1 h-4 w-4" />
-                {event.startTime}
-              </div>
+  const EventCard = ({ event }: { event: Event }) => {
+    const eventDate = new Date(event.date);
+    const status = mapStatus(event.status);
+    
+    return (
+      <Card className="hover:shadow-lg transition-shadow group">
+        <div className="relative">
+          {event.imageUrl ? (
+            <div className="h-48 bg-gray-200 rounded-t-lg overflow-hidden">
+              <img 
+                src={event.imageUrl} 
+                alt={event.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
             </div>
-            {event.price && (
-              <div className="flex items-center text-primary font-medium">
-                <DollarSign className="mr-1 h-4 w-4" />
-                {event.price}
-              </div>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
-            <div className="flex items-center">
-              <MapPin className="mr-1 h-4 w-4" />
-              {event.location}
+          ) : (
+            <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
+              <Calendar className="h-16 w-16 text-primary/40" />
             </div>
-            <div className="flex items-center">
-              <Users className="mr-1 h-4 w-4" />
-              {event.currentParticipants}/{event.maxParticipants}
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={event.organizer.avatar} alt={event.organizer.name} />
-                <AvatarFallback className="text-xs">
-                  {event.organizer.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-gray-600">{event.organizer.name}</span>
-            </div>
-            <Badge variant="secondary" className="text-xs">
-              {event.skill_level}
+          )}
+          <div className="absolute top-4 right-4">
+            <Badge variant={status === 'upcoming' ? 'default' : 'secondary'}>
+              {status}
             </Badge>
           </div>
-          
-          <div className="flex flex-wrap gap-1 mt-2">
-            {event.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
+        </div>
+        
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg mb-1">{event.name}</CardTitle>
+              <CardDescription className="text-sm line-clamp-2">
+                {event.description}
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="ml-2">
+              {event.sportType}
+            </Badge>
           </div>
-          
-          <div className="flex items-center justify-between pt-3 border-t">
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm">
-                <Heart className="h-4 w-4 mr-1" />
-                24
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Eye className="h-4 w-4 mr-1" />
-                156
-              </Button>
-              <Button variant="ghost" size="sm">
-                <Share2 className="h-4 w-4" />
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <Calendar className="mr-1 h-4 w-4" />
+                  {eventDate.toLocaleDateString()}
+                </div>
+                <div className="flex items-center">
+                  <Clock className="mr-1 h-4 w-4" />
+                  {event.startTime}
+                </div>
+              </div>
+              {event.price !== undefined && event.price > 0 && (
+                <div className="flex items-center text-primary font-medium">
+                  <DollarSign className="mr-1 h-4 w-4" />
+                  {event.price}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center">
+                <MapPin className="mr-1 h-4 w-4" />
+                <span className="truncate max-w-[150px]">{event.location}</span>
+              </div>
+              <div className="flex items-center">
+                <Users className="mr-1 h-4 w-4" />
+                {event.currentParticipants}/{event.maxParticipants}
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Avatar className="h-6 w-6">
+                  <AvatarFallback className="text-xs">
+                    {event.organizer?.name?.split(' ').map(n => n[0]).join('') || 'O'}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-gray-600">{event.organizer?.name || 'Organizer'}</span>
+              </div>
+              {event.skillLevel && (
+                <Badge variant="secondary" className="text-xs">
+                  {event.skillLevel}
+                </Badge>
+              )}
+            </div>
+            
+            {event.tags && event.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {event.tags.slice(0, 3).map((tag, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between pt-3 border-t">
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm">
+                  <Heart className="h-4 w-4 mr-1" />
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <Eye className="h-4 w-4 mr-1" />
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button 
+                size="sm" 
+                disabled={event.currentParticipants >= event.maxParticipants}
+              >
+                {status === 'upcoming' ? 'Join Event' : 'View Details'}
               </Button>
             </div>
-            <Button size="sm" disabled={event.currentParticipants >= event.maxParticipants}>
-              {event.status === 'upcoming' ? 'Join Event' : 'View Details'}
-            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-gray-600">Loading events...</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
-  );
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -193,9 +265,12 @@ export default function EventsPage() {
               Discover and join amazing sports events in your community
             </p>
           </div>
-          <Button className="mt-4 md:mt-0">
-            Create Event
-          </Button>
+          {user?.role === 'ORGANIZER' && (
+            <Button className="mt-4 md:mt-0" onClick={() => navigate('/dashboard/create-event')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Event
+            </Button>
+          )}
         </div>
 
         {/* Stats */}
@@ -305,9 +380,16 @@ export default function EventsPage() {
                   <Calendar className="h-12 w-12 text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
                   <p className="text-gray-600 text-center mb-4">
-                    Try adjusting your filters or search terms to find more events.
+                    {events.length === 0 
+                      ? "No events have been created yet. Check back later!"
+                      : "Try adjusting your filters or search terms to find more events."}
                   </p>
-                  <Button>Create New Event</Button>
+                  {user?.role === 'ORGANIZER' && (
+                    <Button onClick={() => navigate('/dashboard/create-event')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Event
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}

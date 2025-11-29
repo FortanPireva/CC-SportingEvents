@@ -30,7 +30,7 @@ function App() {
         <Route path="/auth/set-new-password" element={<SetNewPasswordPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/events" element={<EventsPage />} />
-        <Route path="/dashboard/venues" element={<VenuesPage />} />
+        {/* <Route path="/dashboard/venues" element={<VenuesPage />} /> */}
         <Route path="/dashboard/community" element={<CommunityPage />} />
         <Route path="/dashboard/reviews" element={<ReviewsPage />} />
         <Route path="/dashboard/my-events" element={<MyEventsPage />} />

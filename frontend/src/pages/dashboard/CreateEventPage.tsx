@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,11 +13,14 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Clock, MapPin, Users, DollarSign, Plus, X, Upload, Save, Eye, CircleAlert as AlertCircle, CircleCheck as CheckCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, DollarSign, Plus, X, Upload, Save, Eye, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { eventService, CreateEventData } from '@/services/event.service';
+import { toast } from 'sonner';
 
 export default function CreateEventPage() {
+  const navigate = useNavigate();
   const [eventData, setEventData] = useState({
     title: '',
     description: '',
@@ -37,6 +41,7 @@ export default function CreateEventPage() {
   const [currentTag, setCurrentTag] = useState('');
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sports = [
     'Basketball', 'Soccer', 'Tennis', 'Volleyball', 'Baseball', 'Swimming',
@@ -124,11 +129,49 @@ export default function CreateEventPage() {
     setStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmit = () => {
-    if (validateStep(3)) {
-      // Here you would typically submit to your API
-      console.log('Event data:', eventData);
-      alert('Event created successfully!');
+  const handleSubmit = async () => {
+    if (!validateStep(3)) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      // Prepare data for API - mapping frontend fields to backend fields
+      const createData: CreateEventData = {
+        name: eventData.title,
+        description: eventData.description,
+        sportType: eventData.sport,
+        date: eventData.date!.toISOString(),
+        startTime: eventData.startTime,
+        endTime: eventData.endTime,
+        location: eventData.location,
+        maxParticipants: parseInt(eventData.maxParticipants),
+        isRecurring: eventData.isRecurring,
+        recurringPattern: eventData.isRecurring ? eventData.recurringPattern : undefined,
+        price: eventData.price ? parseFloat(eventData.price) : undefined,
+        skillLevel: eventData.skillLevel || undefined,
+        tags: eventData.tags.length > 0 ? eventData.tags : undefined,
+        // Note: Image upload would need separate handling (file upload endpoint)
+      };
+
+      const response = await eventService.createEvent(createData);
+
+      if (response.success) {
+        toast.success('Event created successfully!', {
+          description: 'Your event has been published and is now visible to participants.',
+        });
+        navigate('/dashboard/my-events');
+      } else {
+        throw new Error(response.error || 'Failed to create event');
+      }
+    } catch (error: any) {
+      console.error('Create event error:', error);
+      toast.error('Failed to create event', {
+        description: error.message || 'Please try again later.',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -537,19 +580,29 @@ export default function CreateEventPage() {
           </Button>
           
           <div className="space-x-2">
-            <Button variant="outline">
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </Button>
+  
             
             {step < 4 ? (
               <Button onClick={nextStep}>
                 Next
               </Button>
             ) : (
-              <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-                <Save className="h-4 w-4 mr-2" />
-                Publish Event
+              <Button 
+                onClick={handleSubmit} 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Publish Event
+                  </>
+                )}
               </Button>
             )}
           </div>

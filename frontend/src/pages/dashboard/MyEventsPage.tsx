@@ -1,35 +1,75 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Users, MapPin, Clock, Search, Filter, Star, DollarSign, TrendingUp, Eye, CreditCard as Edit, Trash2, Plus, MoveHorizontal as MoreHorizontal, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle } from 'lucide-react';
-import { mockEvents, mockUsers } from '@/lib/mockData';
-import { Event } from '@/lib/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Calendar, Users, MapPin, Clock, Search, Filter, Star, DollarSign, TrendingUp, Eye, Trash2, Plus, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, Loader2 } from 'lucide-react';
+import { eventService, Event } from '@/services/event.service';
+import { toast } from 'sonner';
 
 export default function MyEventsPage() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter events to show only those organized by the current user
-  const myEvents = mockEvents.filter(event => event.organizer.id === user?.id || event.organizer.email.includes('organizer'));
+  // Fetch organizer's events
+  useEffect(() => {
+    const fetchMyEvents = async () => {
+      setIsLoading(true);
+      try {
+        const response = await eventService.getMyEvents(1, 100);
+        if (response.success && response.data) {
+          setEvents(response.data.events);
+        }
+      } catch (error) {
+        console.error('Failed to fetch events:', error);
+        toast.error('Failed to load your events');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMyEvents();
+  }, []);
+
+  type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   
-  const filterEvents = (events: Event[]) => {
-    return events.filter(event => {
-      const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  // Map backend status to frontend status for display
+  const mapStatus = (status: string): EventStatus => {
+    switch (status) {
+      case 'active':
+        return 'upcoming';
+      case 'ongoing':
+        return 'ongoing';
+      case 'cancelled':
+        return 'cancelled';
+      case 'completed':
+        return 'completed';
+      default:
+        return 'upcoming';
+    }
+  };
+
+  const filterEvents = (eventsList: Event[]) => {
+    return eventsList.filter(event => {
+      const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           event.sport.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = selectedStatus === 'all' || event.status === selectedStatus;
+                           event.sportType.toLowerCase().includes(searchTerm.toLowerCase());
+      const eventStatus = mapStatus(event.status);
+      const matchesStatus = selectedStatus === 'all' || eventStatus === selectedStatus;
       
       return matchesSearch && matchesStatus;
     }).sort((a, b) => {
@@ -39,52 +79,55 @@ export default function MyEventsPage() {
         case 'participants':
           return b.currentParticipants - a.currentParticipants;
         case 'revenue':
-          return (b.price || 0) * b.currentParticipants - (a.price || 0) * a.currentParticipants;
+          return ((b.price || 0) * b.currentParticipants) - ((a.price || 0) * a.currentParticipants);
         default:
           return 0;
       }
     });
   };
 
-  const filteredEvents = filterEvents(myEvents);
-  const upcomingEvents = filteredEvents.filter(event => event.status === 'upcoming');
-  const ongoingEvents = filteredEvents.filter(event => event.status === 'ongoing');
-  const completedEvents = filteredEvents.filter(event => event.status === 'completed');
-  const cancelledEvents = filteredEvents.filter(event => event.status === 'cancelled');
+  const filteredEvents = filterEvents(events);
+  const upcomingEvents = filteredEvents.filter(event => mapStatus(event.status) === 'upcoming');
+  const ongoingEvents = filteredEvents.filter(event => mapStatus(event.status) === 'ongoing');
+  const completedEvents = filteredEvents.filter(event => mapStatus(event.status) === 'completed');
+  const cancelledEvents = filteredEvents.filter(event => mapStatus(event.status) === 'cancelled');
 
   const stats = [
     { 
       title: 'Total Events', 
-      value: myEvents.length.toString(), 
+      value: events.length.toString(), 
       icon: Calendar, 
-      trend: '+3 this month',
+      trend: `${events.filter(e => mapStatus(e.status) === 'upcoming').length} upcoming`,
       color: 'text-blue-600'
     },
     { 
       title: 'Total Participants', 
-      value: myEvents.reduce((sum, event) => sum + event.currentParticipants, 0).toString(), 
+      value: events.reduce((sum, event) => sum + event.currentParticipants, 0).toString(), 
       icon: Users, 
-      trend: '+47 this week',
+      trend: 'Across all events',
       color: 'text-green-600'
     },
     { 
       title: 'Revenue Generated', 
-      value: `$${myEvents.reduce((sum, event) => sum + (event.price || 0) * event.currentParticipants, 0)}`, 
+      value: `$${events.reduce((sum, event) => sum + (event.price || 0) * event.currentParticipants, 0).toFixed(2)}`, 
       icon: DollarSign, 
-      trend: '+$890 this month',
+      trend: 'Total earnings',
       color: 'text-purple-600'
     },
     { 
-      title: 'Average Rating', 
-      value: '4.8', 
+      title: 'Avg. Capacity', 
+      value: events.length > 0 
+        ? `${Math.round(events.reduce((sum, e) => sum + (e.currentParticipants / e.maxParticipants * 100), 0) / events.length)}%` 
+        : '0%', 
       icon: Star, 
-      trend: '+0.2 this month',
+      trend: 'Fill rate',
       color: 'text-yellow-600'
     }
   ];
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    const mappedStatus = mapStatus(status);
+    switch (mappedStatus) {
       case 'upcoming':
         return <Clock className="h-4 w-4 text-blue-500" />;
       case 'ongoing':
@@ -99,7 +142,8 @@ export default function MyEventsPage() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const mappedStatus = mapStatus(status);
+    switch (mappedStatus) {
       case 'upcoming':
         return 'bg-blue-100 text-blue-800';
       case 'ongoing':
@@ -113,26 +157,67 @@ export default function MyEventsPage() {
     }
   };
 
+  const handleCancelEvent = async (event: Event) => {
+    try {
+      const response = await eventService.cancelEvent(event.id);
+      if (response.success) {
+        setEvents(prev => prev.map(e => 
+          e.id === event.id ? { ...e, status: 'cancelled' } : e
+        ));
+        toast.success('Event cancelled successfully');
+      }
+    } catch (error) {
+      console.error('Failed to cancel event:', error);
+      toast.error('Failed to cancel event');
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!eventToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await eventService.deleteEvent(eventToDelete.id);
+      if (response.success) {
+        setEvents(prev => prev.filter(e => e.id !== eventToDelete.id));
+        toast.success('Event deleted successfully');
+        setDeleteDialogOpen(false);
+        setEventToDelete(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      toast.error('Failed to delete event');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const EventCard = ({ event }: { event: Event }) => {
     const revenue = (event.price || 0) * event.currentParticipants;
     const fillRate = Math.round((event.currentParticipants / event.maxParticipants) * 100);
+    const eventDate = new Date(event.date);
     
     return (
       <Card className="hover:shadow-lg transition-shadow group">
         <div className="relative">
-          {event.image && (
+          {event.imageUrl && (
             <div className="h-48 bg-gray-200 rounded-t-lg overflow-hidden">
               <img 
-                src={event.image} 
-                alt={event.title}
+                src={event.imageUrl} 
+                alt={event.name}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
+            </div>
+          )}
+          {!event.imageUrl && (
+            <div className="h-48 bg-gradient-to-br from-primary/20 to-primary/5 rounded-t-lg flex items-center justify-center">
+              <Calendar className="h-16 w-16 text-primary/40" />
             </div>
           )}
           <div className="absolute top-4 right-4 flex space-x-2">
             <Badge className={getStatusColor(event.status)}>
               {getStatusIcon(event.status)}
-              <span className="ml-1 capitalize">{event.status}</span>
+              <span className="ml-1 capitalize">{mapStatus(event.status)}</span>
             </Badge>
           </div>
         </div>
@@ -140,19 +225,14 @@ export default function MyEventsPage() {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <CardTitle className="text-lg mb-1">{event.title}</CardTitle>
+              <CardTitle className="text-lg mb-1">{event.name}</CardTitle>
               <CardDescription className="text-sm line-clamp-2">
                 {event.description}
               </CardDescription>
             </div>
-            <div className="flex space-x-1 ml-2">
-              <Button variant="ghost" size="sm">
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </div>
+            <Badge variant="outline" className="ml-2">
+              {event.sportType}
+            </Badge>
           </div>
         </CardHeader>
         
@@ -161,7 +241,7 @@ export default function MyEventsPage() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="flex items-center text-gray-600">
                 <Calendar className="mr-2 h-4 w-4" />
-                {event.date.toLocaleDateString()}
+                {eventDate.toLocaleDateString()}
               </div>
               <div className="flex items-center text-gray-600">
                 <Clock className="mr-2 h-4 w-4" />
@@ -169,7 +249,7 @@ export default function MyEventsPage() {
               </div>
               <div className="flex items-center text-gray-600">
                 <MapPin className="mr-2 h-4 w-4" />
-                {event.location}
+                <span className="truncate">{event.location}</span>
               </div>
               <div className="flex items-center text-gray-600">
                 <Users className="mr-2 h-4 w-4" />
@@ -193,13 +273,13 @@ export default function MyEventsPage() {
               </div>
             </div>
             
-            {event.price && (
+            {event.price !== undefined && event.price > 0 && (
               <div className="flex justify-between items-center pt-3 border-t">
                 <div className="text-sm text-gray-600">
                   <span className="font-medium text-primary">${event.price}</span> per person
                 </div>
                 <div className="text-sm font-medium text-green-600">
-                  ${revenue} revenue
+                  ${revenue.toFixed(2)} revenue
                 </div>
               </div>
             )}
@@ -210,14 +290,27 @@ export default function MyEventsPage() {
                   <Eye className="h-4 w-4 mr-1" />
                   View
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
+                {mapStatus(event.status) !== 'cancelled' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleCancelEvent(event)}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Cancel
+                  </Button>
+                )}
               </div>
-              <Button variant="outline" size="sm">
-                <Users className="h-4 w-4 mr-1" />
-                Manage
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setEventToDelete(event);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
               </Button>
             </div>
           </div>
@@ -225,6 +318,19 @@ export default function MyEventsPage() {
       </Card>
     );
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-gray-600">Loading your events...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -237,7 +343,7 @@ export default function MyEventsPage() {
               Manage and track all your organized events
             </p>
           </div>
-          <Button className="mt-4 md:mt-0">
+          <Button className="mt-4 md:mt-0" onClick={() => navigate('/dashboard/create-event')}>
             <Plus className="h-4 w-4 mr-2" />
             Create New Event
           </Button>
@@ -346,9 +452,11 @@ export default function MyEventsPage() {
                   <Calendar className="h-12 w-12 text-gray-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
                   <p className="text-gray-600 text-center mb-4">
-                    Create your first event to get started with organizing sports activities.
+                    {events.length === 0 
+                      ? "Create your first event to get started with organizing sports activities."
+                      : "Try adjusting your filters to find events."}
                   </p>
-                  <Button>
+                  <Button onClick={() => navigate('/dashboard/create-event')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create Event
                   </Button>
@@ -358,37 +466,123 @@ export default function MyEventsPage() {
           </TabsContent>
           
           <TabsContent value="upcoming" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {upcomingEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
+            {upcomingEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {upcomingEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming events</h3>
+                  <p className="text-gray-600 text-center mb-4">
+                    Create a new event to get started.
+                  </p>
+                  <Button onClick={() => navigate('/dashboard/create-event')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Event
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="ongoing" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ongoingEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
+            {ongoingEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {ongoingEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No ongoing events</h3>
+                  <p className="text-gray-600 text-center">
+                    Events that are currently in progress will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="completed" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {completedEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
+            {completedEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {completedEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No completed events</h3>
+                  <p className="text-gray-600 text-center">
+                    Completed events will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
           
           <TabsContent value="cancelled" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {cancelledEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </div>
+            {cancelledEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {cancelledEvents.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No cancelled events</h3>
+                  <p className="text-gray-600 text-center">
+                    Cancelled events will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Event</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{eventToDelete?.name}"? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteEvent}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Event
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
