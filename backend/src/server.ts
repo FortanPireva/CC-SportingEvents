@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 // Import routes
 import authRoutes from './routes/auth.routes';
 import eventRoutes from './routes/event.routes';
+import analyticsRoutes from './routes/analytics.routes';
 // import userRoutes from './routes/user.routes';
 // import participationRoutes from './routes/participation.routes';
 
@@ -28,6 +29,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/analytics', analyticsRoutes);
 // app.use('/api/users', userRoutes);
 // app.use('/api/participations', participationRoutes);
 

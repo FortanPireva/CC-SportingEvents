@@ -13,10 +13,12 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, Clock, MapPin, Users, DollarSign, Plus, X, Upload, Save, Eye, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, MapPin, Users, DollarSign, Plus, X, Upload, Save, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { eventService, CreateEventData } from '@/services/event.service';
+import { storageService } from '@/services/storage.service';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 export default function CreateEventPage() {
@@ -42,6 +44,9 @@ export default function CreateEventPage() {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const sports = [
     'Basketball', 'Soccer', 'Tennis', 'Volleyball', 'Baseball', 'Swimming',
@@ -84,6 +89,55 @@ export default function CreateEventPage() {
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove)
     }));
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!isSupabaseConfigured()) {
+      toast.error('Image upload not available', {
+        description: 'Supabase storage is not configured. Please contact the administrator.',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      const result = await storageService.uploadImage(file, 'events');
+      
+      if (result.success && result.url) {
+        setUploadedImageUrl(result.url);
+        handleInputChange('image', file);
+        toast.success('Image uploaded successfully!');
+      } else {
+        setImagePreview(null);
+        toast.error('Failed to upload image', {
+          description: result.error || 'Please try again.',
+        });
+      }
+    } catch (error: any) {
+      setImagePreview(null);
+      toast.error('Upload failed', {
+        description: error.message || 'An unexpected error occurred.',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeImage = async () => {
+    if (uploadedImageUrl) {
+      await storageService.deleteImage(uploadedImageUrl);
+    }
+    setUploadedImageUrl(null);
+    setImagePreview(null);
+    handleInputChange('image', null);
   };
 
   const validateStep = (stepNumber: number) => {
@@ -152,7 +206,7 @@ export default function CreateEventPage() {
         price: eventData.price ? parseFloat(eventData.price) : undefined,
         skillLevel: eventData.skillLevel || undefined,
         tags: eventData.tags.length > 0 ? eventData.tags : undefined,
-        // Note: Image upload would need separate handling (file upload endpoint)
+        imageUrl: uploadedImageUrl || undefined,
       };
 
       const response = await eventService.createEvent(createData);
@@ -283,6 +337,7 @@ export default function CreateEventPage() {
                 mode="single"
                 selected={eventData.date}
                 onSelect={(date) => handleInputChange('date', date)}
+                disabled={{ before: new Date() }}
                 initialFocus
               />
             </PopoverContent>
@@ -431,30 +486,73 @@ export default function CreateEventPage() {
 
         <div className="md:col-span-2">
           <Label htmlFor="image">Event Image (Optional)</Label>
-          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-            <div className="space-y-1 text-center">
-              <Upload className="mx-auto h-12 w-12 text-gray-400" />
-              <div className="flex text-sm text-gray-600">
-                <label htmlFor="image" className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80">
-                  <span>Upload a file</span>
-                  <input
-                    id="image"
-                    type="file"
-                    className="sr-only"
-                    accept="image/*"
-                    onChange={(e) => handleInputChange('image', e.target.files?.[0] || null)}
-                  />
-                </label>
-                <p className="pl-1">or drag and drop</p>
+          {!imagePreview ? (
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-primary/50 transition-colors">
+              <div className="space-y-1 text-center">
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mx-auto h-12 w-12 text-primary animate-spin" />
+                    <p className="text-sm text-gray-600">Uploading image...</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="flex text-sm text-gray-600">
+                      <label htmlFor="image" className="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-primary/80">
+                        <span>Upload a file</span>
+                        <input
+                          id="image"
+                          type="file"
+                          className="sr-only"
+                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleImageUpload(file);
+                            }
+                          }}
+                          disabled={isUploading}
+                        />
+                      </label>
+                      <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 10MB</p>
+                    {!isSupabaseConfigured() && (
+                      <p className="text-xs text-amber-600 mt-2">
+                        <AlertCircle className="inline h-3 w-3 mr-1" />
+                        Supabase not configured - image upload disabled
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
-              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
             </div>
-          </div>
-          {eventData.image && (
-            <p className="text-sm text-green-600 mt-2">
-              <CheckCircle className="inline h-4 w-4 mr-1" />
-              {eventData.image.name} uploaded
-            </p>
+          ) : (
+            <div className="mt-1 relative">
+              <div className="relative rounded-md overflow-hidden border-2 border-green-500">
+                <img 
+                  src={imagePreview} 
+                  alt="Event preview" 
+                  className="w-full h-48 object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={removeImage}
+                    disabled={isUploading}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-green-600 mt-2 flex items-center">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                {eventData.image?.name || 'Image'} uploaded successfully
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -470,6 +568,15 @@ export default function CreateEventPage() {
       </div>
 
       <Card>
+        {imagePreview && (
+          <div className="relative h-48 overflow-hidden rounded-t-lg">
+            <img 
+              src={imagePreview} 
+              alt="Event preview" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <span>{eventData.title}</span>

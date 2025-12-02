@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Calendar, 
   Users, 
@@ -15,81 +16,188 @@ import {
   Activity,
   Plus,
   Star,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
-import { Event } from '@/lib/types';
 import { useNavigate } from 'react-router-dom';
+import { useAnalytics, isOrganizerStats, isUserStats, UpcomingEvent, RecentActivity } from '@/hooks/useAnalytics';
+
+// Helper to format relative time
+function formatRelativeTime(timestamp: string): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return 'just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  return date.toLocaleDateString();
+}
+
+// Helper to get initials from name
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { analytics, isLoading, error, refetch } = useAnalytics();
 
-  // Mock data for demonstration
-  const upcomingEvents: Event[] = [
-    {
-      id: '1',
-      title: 'Basketball Tournament',
-      description: 'Weekly basketball tournament for all skill levels',
-      sport: 'Basketball',
-      organizer: { 
-        id: '2', 
-        email: 'john@example.com', 
-        name: 'John Smith', 
-        type: 'organizer',
-        joinedAt: new Date()
-      },
-      date: new Date('2024-01-15'),
-      startTime: '18:00',
-      endTime: '20:00',
-      location: 'Community Sports Center',
-      maxParticipants: 16,
-      currentParticipants: 12,
-      participants: [],
-      skill_level: 'all',
-      status: 'upcoming',
-      tags: ['competitive', 'tournament'],
-      created_at: new Date(),
-      price: 15
-    },
-    {
-      id: '2',
-      title: 'Morning Yoga Session',
-      description: 'Relaxing yoga session to start your day',
-      sport: 'Yoga',
-      organizer: { 
-        id: '3', 
-        email: 'sarah@example.com', 
-        name: 'Sarah Johnson', 
-        type: 'organizer',
-        joinedAt: new Date()
-      },
-      date: new Date('2024-01-16'),
-      startTime: '07:00',
-      endTime: '08:30',
-      location: 'Riverside Park',
-      maxParticipants: 20,
-      currentParticipants: 8,
-      participants: [],
-      skill_level: 'beginner',
-      status: 'upcoming',
-      tags: ['wellness', 'outdoor'],
-      created_at: new Date()
-    }
-  ];
+  // Build stats array based on user type and analytics data
+  const getStats = () => {
+    if (!analytics) return [];
 
-  const stats = user?.type === 'organizer' 
-    ? [
-        { title: 'Events Created', value: '12', icon: Calendar, trend: '+2 this month' },
-        { title: 'Total Participants', value: '156', icon: Users, trend: '+23 this week' },
-        { title: 'Average Rating', value: '4.8', icon: Star, trend: '+0.2 this month' },
-        { title: 'Revenue', value: '$1,240', icon: TrendingUp, trend: '+$320 this month' }
-      ]
-    : [
-        { title: 'Events Joined', value: '8', icon: Calendar, trend: '+2 this month' },
-        { title: 'Hours Active', value: '24', icon: Clock, trend: '+6 this week' },
-        { title: 'Sports Tried', value: '5', icon: Activity, trend: '+1 this month' },
-        { title: 'Friends Made', value: '12', icon: Users, trend: '+3 this month' }
+    if (analytics.userType === 'organizer' && isOrganizerStats(analytics.stats)) {
+      const stats = analytics.stats;
+      return [
+        { 
+          title: 'Events Created', 
+          value: stats.eventsCreated.toString(), 
+          icon: Calendar, 
+          trend: `+${stats.eventsCreatedThisMonth} this month` 
+        },
+        { 
+          title: 'Total Participants', 
+          value: stats.totalParticipants.toString(), 
+          icon: Users, 
+          trend: `+${stats.participantsThisWeek} this week` 
+        },
+        { 
+          title: 'Average Rating', 
+          value: stats.averageRating.toFixed(1), 
+          icon: Star, 
+          trend: `${stats.ratingChangeThisMonth >= 0 ? '+' : ''}${stats.ratingChangeThisMonth.toFixed(1)} this month` 
+        },
+        { 
+          title: 'Revenue', 
+          value: `$${stats.totalRevenue.toLocaleString()}`, 
+          icon: TrendingUp, 
+          trend: `+$${stats.revenueThisMonth.toLocaleString()} this month` 
+        }
       ];
+    } else if (isUserStats(analytics.stats)) {
+      const stats = analytics.stats;
+      return [
+        { 
+          title: 'Events Joined', 
+          value: stats.eventsJoined.toString(), 
+          icon: Calendar, 
+          trend: `+${stats.eventsJoinedThisMonth} this month` 
+        },
+        { 
+          title: 'Hours Active', 
+          value: stats.hoursActive.toString(), 
+          icon: Clock, 
+          trend: `+${stats.hoursThisWeek} this week` 
+        },
+        { 
+          title: 'Sports Tried', 
+          value: stats.sportsTried.toString(), 
+          icon: Activity, 
+          trend: `+${stats.sportsTriedThisMonth} this month` 
+        },
+        { 
+          title: 'Friends Made', 
+          value: stats.connectionsMade.toString(), 
+          icon: Users, 
+          trend: `+${stats.connectionsThisMonth} this month` 
+        }
+      ];
+    }
+
+    return [];
+  };
+
+  const stats = getStats();
+  const isOrganizer = analytics?.userType === 'organizer' || user?.type === 'organizer';
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 space-y-6">
+          {/* Welcome Section Skeleton */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <Skeleton className="h-9 w-64 mb-2" />
+              <Skeleton className="h-5 w-96" />
+            </div>
+            <Skeleton className="h-10 w-32 mt-4 md:mt-0" />
+          </div>
+
+          {/* Stats Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16 mb-1" />
+                  <Skeleton className="h-3 w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Main Content Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48 mb-2" />
+                  <Skeleton className="h-4 w-64" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <Skeleton key={i} className="h-24 w-full" />
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="p-6">
+          <Card className="border-destructive">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Failed to load dashboard</h3>
+              <p className="text-muted-foreground mb-4">{error}</p>
+              <Button onClick={refetch}>Try Again</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -101,16 +209,16 @@ export default function DashboardPage() {
               Welcome back, {user?.name?.split(' ')[0]}!
             </h1>
             <p className="text-gray-600 mt-1">
-              {user?.type === 'organizer' 
+              {isOrganizer 
                 ? "Here's what's happening with your events"
                 : "Ready to get active? Here are your upcoming activities"
               }
             </p>
           </div>
           <div className="mt-4 md:mt-0">
-            <Button className="w-full md:w-auto" onClick={() => user?.type === 'organizer' ? navigate('/dashboard/create-event') : navigate('/dashboard/events')}>
+            <Button className="w-full md:w-auto" onClick={() => isOrganizer ? navigate('/dashboard/create-event') : navigate('/dashboard/events')}>
               <Plus className="mr-2 h-4 w-4" />
-              {user?.type === 'organizer' ? 'Create Event' : 'Find Events'}
+              {isOrganizer ? 'Create Event' : 'Find Events'}
             </Button>
           </div>
         </div>
@@ -143,62 +251,72 @@ export default function DashboardPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>
-                    {user?.type === 'organizer' ? 'Your Upcoming Events' : 'Upcoming Events'}
+                    {isOrganizer ? 'Your Upcoming Events' : 'Upcoming Events'}
                   </CardTitle>
                   <CardDescription>
-                    {user?.type === 'organizer' 
+                    {isOrganizer 
                       ? 'Events you\'re organizing' 
                       : 'Events you\'ve joined or might be interested in'
                     }
                   </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm">
-                  View All
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                {upcomingEvents.map((event) => (
-                  <div key={event.id} className="flex items-start space-x-4 p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Activity className="h-6 w-6 text-primary" />
+                {analytics?.upcomingEvents && analytics.upcomingEvents.length > 0 ? (
+                  analytics.upcomingEvents.map((event: UpcomingEvent) => (
+                    <div key={event.id} className="flex items-start space-x-4 p-4 border rounded-lg hover:shadow-sm transition-shadow">
+                      <div className="flex-shrink-0">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Activity className="h-6 w-6 text-primary" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900 truncate">
+                              {event.title}
+                            </h4>
+                            <p className="text-sm text-gray-500 line-clamp-1">{event.description}</p>
+                          </div>
+                          <Badge variant="outline">{event.sport}</Badge>
+                        </div>
+                        <div className="mt-2 flex items-center flex-wrap gap-4 text-xs text-gray-500">
+                          <div className="flex items-center">
+                            <Calendar className="mr-1 h-3 w-3" />
+                            {new Date(event.date).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="mr-1 h-3 w-3" />
+                            {event.startTime}
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="mr-1 h-3 w-3" />
+                            {event.location}
+                          </div>
+                          <div className="flex items-center">
+                            <Users className="mr-1 h-3 w-3" />
+                            {event.currentParticipants}/{event.maxParticipants}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-900 truncate">
-                            {event.title}
-                          </h4>
-                          <p className="text-sm text-gray-500">{event.description}</p>
-                        </div>
-                        <Badge variant="outline">{event.sport}</Badge>
-                      </div>
-                      <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                        <div className="flex items-center">
-                          <Calendar className="mr-1 h-3 w-3" />
-                          {event.date.toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="mr-1 h-3 w-3" />
-                          {event.startTime}
-                        </div>
-                        <div className="flex items-center">
-                          <MapPin className="mr-1 h-3 w-3" />
-                          {event.location}
-                        </div>
-                        <div className="flex items-center">
-                          <Users className="mr-1 h-3 w-3" />
-                          {event.currentParticipants}/{event.maxParticipants}
-                        </div>
-                      </div>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No upcoming events</p>
+                    <p className="text-sm mt-1">
+                      {isOrganizer ? 'Create your first event to get started!' : 'Browse events to find activities near you.'}
+                    </p>
                   </div>
-                ))}
+                )}
                 <div className="text-center pt-4">
-                  <Button variant="outline" className="w-full">
-                    {user?.type === 'organizer' ? 'Create New Event' : 'Browse More Events'}
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => isOrganizer ? navigate('/dashboard/create-event') : navigate('/dashboard/events')}
+                  >
+                    {isOrganizer ? 'Create New Event' : 'Browse More Events'}
                   </Button>
                 </div>
               </CardContent>
@@ -213,36 +331,32 @@ export default function DashboardPage() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {user?.type === 'organizer' ? (
+                {isOrganizer ? (
                   <>
                     <Button className="w-full justify-start" onClick={() => navigate('/dashboard/create-event')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Event
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/dashboard/participants')}>
                       <Users className="mr-2 h-4 w-4" />
                       Manage Participants
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start">
-                      <MapPin className="mr-2 h-4 w-4" />
-                      Book Venue
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button className="w-full justify-start">
+                    <Button className="w-full justify-start" onClick={() => navigate('/dashboard/events')}>
                       <Calendar className="mr-2 h-4 w-4" />
                       Find Events
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/dashboard/community')}>
                       <Users className="mr-2 h-4 w-4" />
                       Join Community
                     </Button>
-                    <Button variant="outline" className="w-full justify-start">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => navigate('/dashboard/reviews')}>
                       <Star className="mr-2 h-4 w-4" />
                       Leave Review
                     </Button>
-                  </>
+                  </> 
                 )}
               </CardContent>
             </Card>
@@ -253,42 +367,27 @@ export default function DashboardPage() {
                 <CardTitle>Recent Activity</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150" />
-                    <AvatarFallback>JS</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">
-                      <span className="font-medium">John Smith</span> created Basketball Tournament
-                    </p>
-                    <p className="text-xs text-gray-500">2 hours ago</p>
+                {analytics?.recentActivity && analytics.recentActivity.length > 0 ? (
+                  analytics.recentActivity.map((activity: RecentActivity) => (
+                    <div key={activity.id} className="flex items-start space-x-3">
+                      <Avatar className="h-8 w-8">
+                        {activity.userAvatar && <AvatarImage src={activity.userAvatar} />}
+                        <AvatarFallback>{getInitials(activity.userName)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">
+                          <span className="font-medium">{activity.userName}</span> {activity.message}
+                        </p>
+                        <p className="text-xs text-gray-500">{formatRelativeTime(activity.timestamp)}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No recent activity</p>
                   </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150" />
-                    <AvatarFallback>SJ</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">
-                      <span className="font-medium">Sarah Johnson</span> joined your yoga session
-                    </p>
-                    <p className="text-xs text-gray-500">4 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg?auto=compress&cs=tinysrgb&w=150" />
-                    <AvatarFallback>MR</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900">
-                      <span className="font-medium">Mike Rodriguez</span> left a 5-star review
-                    </p>
-                    <p className="text-xs text-gray-500">1 day ago</p>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
