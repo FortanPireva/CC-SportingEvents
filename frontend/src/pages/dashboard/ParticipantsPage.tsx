@@ -335,10 +335,6 @@ export default function ParticipantsPage() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite Participants
-            </Button>
           </div>
         </div>
 
@@ -461,12 +457,6 @@ export default function ParticipantsPage() {
                         ? "You don't have any participants yet. Create events and invite people to join!"
                         : "Try adjusting your filters or search term."}
                     </p>
-                    {participants.length === 0 && (
-                      <Button>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Invite Participants
-                      </Button>
-                    )}
                   </CardContent>
                 </Card>
               )}
