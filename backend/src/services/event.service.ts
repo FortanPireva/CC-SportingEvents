@@ -804,9 +804,21 @@ export class EventService {
       (sum, e) => sum + e._count.participations, 0
     );
 
-    const allParticipations = events.flatMap(e => e.participations);
-    const confirmedCount = allParticipations.filter(
-      p => p.status === 'CONFIRMED' || p.status === 'REGISTERED'
+    // Calculate attendance rate for past events only
+    const now = new Date();
+    const pastEvents = events.filter(e => new Date(e.date) < now);
+    
+    // Get participations from past events
+    const pastEventParticipations = pastEvents.flatMap(e => e.participations);
+    
+    // Expected attendees: those who registered, confirmed, or attended (excluding cancelled/waitlisted)
+    const expectedAttendees = pastEventParticipations.filter(
+      p => p.status === 'REGISTERED' || p.status === 'CONFIRMED' || p.status === 'ATTENDED'
+    ).length;
+    
+    // Actual attendees: those who actually attended
+    const actualAttendees = pastEventParticipations.filter(
+      p => p.status === 'ATTENDED'
     ).length;
 
     const allFeedback = events.flatMap(e => e.feedback);
@@ -815,11 +827,12 @@ export class EventService {
       : 0;
 
     const activeEvents = events.filter(
-      e => e.status === 'active' && new Date(e.date) >= new Date()
+      e => e.status === 'active' && new Date(e.date) >= now
     ).length;
 
-    const attendanceRate = totalParticipants > 0
-      ? Math.round((confirmedCount / totalParticipants) * 100)
+    // Attendance rate = actual attendees / expected attendees (for past events)
+    const attendanceRate = expectedAttendees > 0
+      ? Math.round((actualAttendees / expectedAttendees) * 100)
       : 0;
 
     return {
