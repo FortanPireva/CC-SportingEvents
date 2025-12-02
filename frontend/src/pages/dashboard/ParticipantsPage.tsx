@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, Search, Filter, Mail, MapPin, Calendar, Star, TrendingUp, UserPlus, MessageCircle, MoveHorizontal as MoreHorizontal, Download, Send, CircleCheck as CheckCircle, Circle as XCircle, Clock, Award, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService, EventParticipantDetail, EventSummary, OrganizerStatistics } from '@/services/event.service';
+import * as XLSX from 'xlsx';
 
 export default function ParticipantsPage() {
   const { user } = useAuth();
@@ -164,6 +165,57 @@ export default function ParticipantsPage() {
       month: 'short', 
       day: 'numeric' 
     });
+  };
+
+  const exportToExcel = () => {
+    // Prepare data for export - use filtered participants if there are filters applied
+    const dataToExport = filteredParticipants.length > 0 ? filteredParticipants : participants;
+    
+    if (dataToExport.length === 0) {
+      alert('No participants to export');
+      return;
+    }
+
+    // Transform data into a format suitable for Excel
+    const excelData = dataToExport.map((participant) => ({
+      'Name': participant.name,
+      'Email': participant.email,
+      'Location': participant.location || 'N/A',
+      'Status': participant.status,
+      'Event Name': participant.eventName,
+      'Event Date': formatDate(participant.eventDate),
+      'Event Location': participant.eventLocation,
+      'Registered At': formatDate(participant.registeredAt),
+      'Preferences': participant.preferences?.join(', ') || 'N/A',
+    }));
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Set column widths for better readability
+    const columnWidths = [
+      { wch: 25 },  // Name
+      { wch: 30 },  // Email
+      { wch: 20 },  // Location
+      { wch: 12 },  // Status
+      { wch: 30 },  // Event Name
+      { wch: 15 },  // Event Date
+      { wch: 25 },  // Event Location
+      { wch: 15 },  // Registered At
+      { wch: 30 },  // Preferences
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Participants');
+
+    // Generate filename with current date
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `participants_export_${date}.xlsx`;
+
+    // Download the file
+    XLSX.writeFile(workbook, fileName);
   };
 
   const ParticipantCard = ({ participant }: { participant: EventParticipantDetail }) => (
@@ -331,9 +383,9 @@ export default function ParticipantsPage() {
             </p>
           </div>
           <div className="flex space-x-2 mt-4 md:mt-0">
-            <Button variant="outline">
+            <Button variant="outline" onClick={exportToExcel} disabled={participants.length === 0}>
               <Download className="h-4 w-4 mr-2" />
-              Export
+              Export ({filteredParticipants.length})
             </Button>
           </div>
         </div>
@@ -524,7 +576,7 @@ export default function ParticipantsPage() {
                   <Send className="h-4 w-4 mr-2" />
                   Send Announcement
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={exportToExcel} disabled={participants.length === 0}>
                   <Download className="h-4 w-4 mr-2" />
                   Export List
                 </Button>
