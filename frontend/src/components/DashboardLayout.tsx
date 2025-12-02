@@ -44,14 +44,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'Events', href: '/dashboard/events', icon: Calendar },
     { name: 'Community', href: '/dashboard/community', icon: Users },
     { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
   ];
 
   const organizerNavigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'My Events', href: '/dashboard/my-events', icon: Calendar },
     { name: 'Create Event', href: '/dashboard/create-event', icon: Plus },
     { name: 'Participants', href: '/dashboard/participants', icon: Users },
