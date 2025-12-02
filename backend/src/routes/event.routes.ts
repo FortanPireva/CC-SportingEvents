@@ -27,6 +27,61 @@ router.get(
 );
 
 /**
+ * @route   GET /api/events/participating
+ * @desc    Get events user is participating in
+ * @access  Private
+ */
+router.get(
+  '/participating',
+  authenticate,
+  EventController.getParticipatingEvents
+);
+
+/**
+ * @route   GET /api/events/my-participants
+ * @desc    Get all participants for organizer's events
+ * @access  Private (Organizers only)
+ */
+router.get(
+  '/my-participants',
+  authenticate,
+  EventController.getMyParticipants
+);
+
+/**
+ * @route   GET /api/events/my-statistics
+ * @desc    Get organizer statistics summary
+ * @access  Private (Organizers only)
+ */
+router.get(
+  '/my-statistics',
+  authenticate,
+  EventController.getMyStatistics
+);
+
+/**
+ * @route   GET /api/events/my-events-summary
+ * @desc    Get organizer events with participant summary
+ * @access  Private (Organizers only)
+ */
+router.get(
+  '/my-events-summary',
+  authenticate,
+  EventController.getMyEventsSummary
+);
+
+/**
+ * @route   POST /api/events/participation-status
+ * @desc    Get user's participation status for multiple events
+ * @access  Private
+ */
+router.post(
+  '/participation-status',
+  authenticate,
+  EventController.getParticipationStatus
+);
+
+/**
  * @route   GET /api/events/:id
  * @desc    Get event by ID
  * @access  Public
@@ -55,6 +110,28 @@ router.put(
   authenticate,
   EventController.updateValidation,
   EventController.update
+);
+
+/**
+ * @route   POST /api/events/:id/join
+ * @desc    Join an event as a participant
+ * @access  Private
+ */
+router.post(
+  '/:id/join',
+  authenticate,
+  EventController.join
+);
+
+/**
+ * @route   POST /api/events/:id/leave
+ * @desc    Leave an event (cancel participation)
+ * @access  Private
+ */
+router.post(
+  '/:id/leave',
+  authenticate,
+  EventController.leave
 );
 
 /**

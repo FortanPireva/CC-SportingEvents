@@ -597,5 +597,305 @@ export class EventController {
       });
     }
   }
+
+  /**
+   * Join an event
+   * POST /api/events/:id/join
+   */
+  static async join(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const { id } = req.params;
+
+      const participation = await EventService.joinEvent(userId, id);
+
+      res.status(200).json({
+        success: true,
+        message: participation.status === 'WAITLISTED' 
+          ? 'Added to waitlist successfully' 
+          : 'Joined event successfully',
+        data: { participation },
+      });
+    } catch (error: any) {
+      console.error('Join event error:', error);
+
+      if (error.message === 'Event not found') {
+        return res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      if (error.message === 'Cannot join an inactive event' || 
+          error.message === 'Already registered for this event') {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to join event',
+      });
+    }
+  }
+
+  /**
+   * Leave an event
+   * POST /api/events/:id/leave
+   */
+  static async leave(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const { id } = req.params;
+
+      await EventService.leaveEvent(userId, id);
+
+      res.status(200).json({
+        success: true,
+        message: 'Left event successfully',
+      });
+    } catch (error: any) {
+      console.error('Leave event error:', error);
+
+      if (error.message === 'Not registered for this event' ||
+          error.message === 'Already cancelled participation') {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to leave event',
+      });
+    }
+  }
+
+  /**
+   * Get events user is participating in
+   * GET /api/events/participating
+   */
+  static async getParticipatingEvents(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const filters = {
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 10,
+      };
+
+      const result = await EventService.getUserParticipatingEvents(userId, filters);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Get participating events error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch participating events',
+      });
+    }
+  }
+
+  /**
+   * Get all participants for organizer's events
+   * GET /api/events/my-participants
+   */
+  static async getMyParticipants(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const organizer = await prisma.organizer.findUnique({
+        where: { userId },
+      });
+
+      if (!organizer) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            participants: [],
+            pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+          },
+        });
+      }
+
+      const filters = {
+        eventId: req.query.eventId as string | undefined,
+        status: req.query.status as string | undefined,
+        search: req.query.search as string | undefined,
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+      };
+
+      const result = await EventService.getOrganizerParticipants(organizer.id, filters);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Get my participants error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch participants',
+      });
+    }
+  }
+
+  /**
+   * Get organizer statistics summary
+   * GET /api/events/my-statistics
+   */
+  static async getMyStatistics(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const organizer = await prisma.organizer.findUnique({
+        where: { userId },
+      });
+
+      if (!organizer) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            statistics: {
+              totalParticipants: 0,
+              activeEvents: 0,
+              attendanceRate: 0,
+              averageRating: 0,
+            },
+          },
+        });
+      }
+
+      const statistics = await EventService.getOrganizerStatistics(organizer.id);
+
+      res.status(200).json({
+        success: true,
+        data: { statistics },
+      });
+    } catch (error) {
+      console.error('Get my statistics error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch statistics',
+      });
+    }
+  }
+
+  /**
+   * Get organizer events with participant summary
+   * GET /api/events/my-events-summary
+   */
+  static async getMyEventsSummary(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const organizer = await prisma.organizer.findUnique({
+        where: { userId },
+      });
+
+      if (!organizer) {
+        return res.status(200).json({
+          success: true,
+          data: { events: [] },
+        });
+      }
+
+      const events = await EventService.getOrganizerEventsWithParticipants(organizer.id);
+
+      res.status(200).json({
+        success: true,
+        data: { events },
+      });
+    } catch (error) {
+      console.error('Get my events summary error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch events summary',
+      });
+    }
+  }
+
+  /**
+   * Get user's participation status for multiple events
+   * POST /api/events/participation-status
+   */
+  static async getParticipationStatus(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const { eventIds } = req.body;
+
+      if (!Array.isArray(eventIds)) {
+        return res.status(400).json({
+          success: false,
+          error: 'eventIds must be an array',
+        });
+      }
+
+      const participations = await EventService.getUserParticipationsForEvents(userId, eventIds);
+
+      res.status(200).json({
+        success: true,
+        data: { participations },
+      });
+    } catch (error) {
+      console.error('Get participation status error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch participation status',
+      });
+    }
+  }
 }
 

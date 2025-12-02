@@ -46,7 +46,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Events', href: '/dashboard/events', icon: Calendar },
-    { name: 'Venues', href: '/dashboard/venues', icon: MapPin },
     { name: 'Community', href: '/dashboard/community', icon: Users },
     { name: 'Reviews', href: '/dashboard/reviews', icon: Star },
   ];

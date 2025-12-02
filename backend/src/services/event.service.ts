@@ -446,6 +446,426 @@ export class EventService {
   }
 
   /**
+   * Join an event as a participant
+   */
+  static async joinEvent(userId: string, eventId: string) {
+    // Check if event exists and is active
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        _count: {
+          select: { participations: true },
+        },
+      },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    if (event.status !== 'active') {
+      throw new Error('Cannot join an inactive event');
+    }
+
+    // Check if user is already participating
+    const existingParticipation = await prisma.participation.findUnique({
+      where: {
+        userId_eventId: { userId, eventId },
+      },
+    });
+
+    if (existingParticipation) {
+      if (existingParticipation.status === 'CANCELLED') {
+        // Re-register cancelled participation
+        const participation = await prisma.participation.update({
+          where: { id: existingParticipation.id },
+          data: {
+            status: event._count.participations >= event.maxParticipants ? 'WAITLISTED' : 'REGISTERED',
+            registeredAt: new Date(),
+          },
+        });
+        return participation;
+      }
+      throw new Error('Already registered for this event');
+    }
+
+    // Check if event is full
+    const status = event._count.participations >= event.maxParticipants ? 'WAITLISTED' : 'REGISTERED';
+
+    const participation = await prisma.participation.create({
+      data: {
+        userId,
+        eventId,
+        status,
+      },
+    });
+
+    return participation;
+  }
+
+  /**
+   * Leave an event (cancel participation)
+   */
+  static async leaveEvent(userId: string, eventId: string) {
+    const participation = await prisma.participation.findUnique({
+      where: {
+        userId_eventId: { userId, eventId },
+      },
+    });
+
+    if (!participation) {
+      throw new Error('Not registered for this event');
+    }
+
+    if (participation.status === 'CANCELLED') {
+      throw new Error('Already cancelled participation');
+    }
+
+    const updatedParticipation = await prisma.participation.update({
+      where: { id: participation.id },
+      data: { status: 'CANCELLED' },
+    });
+
+    // Check if there are waitlisted users to promote
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        _count: {
+          select: { participations: { where: { status: { in: ['REGISTERED', 'CONFIRMED'] } } } },
+        },
+      },
+    });
+
+    if (event) {
+      const activeParticipants = await prisma.participation.count({
+        where: {
+          eventId,
+          status: { in: ['REGISTERED', 'CONFIRMED'] },
+        },
+      });
+
+      if (activeParticipants < event.maxParticipants) {
+        // Promote first waitlisted user
+        const waitlistedUser = await prisma.participation.findFirst({
+          where: {
+            eventId,
+            status: 'WAITLISTED',
+          },
+          orderBy: { registeredAt: 'asc' },
+        });
+
+        if (waitlistedUser) {
+          await prisma.participation.update({
+            where: { id: waitlistedUser.id },
+            data: { status: 'REGISTERED' },
+          });
+
+          // Create notification for promoted user
+          await prisma.notification.create({
+            data: {
+              userId: waitlistedUser.userId,
+              eventId,
+              type: 'waitlist_promoted',
+              message: `You've been moved from the waitlist to registered for "${event.name}"!`,
+            },
+          });
+        }
+      }
+    }
+
+    return updatedParticipation;
+  }
+
+  /**
+   * Get events user is participating in
+   */
+  static async getUserParticipatingEvents(userId: string, filters?: Omit<EventFilters, 'organizerId'>) {
+    const { page = 1, limit = 10 } = filters || {};
+    const skip = (page - 1) * limit;
+
+    const [participations, total] = await Promise.all([
+      prisma.participation.findMany({
+        where: {
+          userId,
+          status: { in: ['REGISTERED', 'CONFIRMED', 'WAITLISTED'] },
+        },
+        include: {
+          event: {
+            include: {
+              organizer: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+              _count: {
+                select: {
+                  participations: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { registeredAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.participation.count({
+        where: {
+          userId,
+          status: { in: ['REGISTERED', 'CONFIRMED', 'WAITLISTED'] },
+        },
+      }),
+    ]);
+
+    return {
+      events: participations.map((p) => ({
+        ...this.formatEventResponse(p.event),
+        participationStatus: p.status,
+        registeredAt: p.registeredAt,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Check if user is participating in an event
+   */
+  static async getUserParticipation(userId: string, eventId: string) {
+    const participation = await prisma.participation.findUnique({
+      where: {
+        userId_eventId: { userId, eventId },
+      },
+    });
+
+    return participation;
+  }
+
+  /**
+   * Get user participation status for multiple events
+   */
+  static async getUserParticipationsForEvents(userId: string, eventIds: string[]) {
+    const participations = await prisma.participation.findMany({
+      where: {
+        userId,
+        eventId: { in: eventIds },
+        status: { in: ['REGISTERED', 'CONFIRMED', 'WAITLISTED'] },
+      },
+    });
+
+    return participations.reduce((acc, p) => {
+      acc[p.eventId] = p.status;
+      return acc;
+    }, {} as Record<string, string>);
+  }
+
+  /**
+   * Get all participants for organizer's events
+   */
+  static async getOrganizerParticipants(organizerId: string, filters?: {
+    eventId?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const { eventId, status, search, page = 1, limit = 50 } = filters || {};
+    const skip = (page - 1) * limit;
+
+    // First get all organizer's event IDs
+    const organizerEvents = await prisma.event.findMany({
+      where: { organizerId },
+      select: { id: true },
+    });
+
+    const eventIds = eventId 
+      ? [eventId] 
+      : organizerEvents.map(e => e.id);
+
+    if (eventIds.length === 0) {
+      return {
+        participants: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      };
+    }
+
+    // Build where clause for participations
+    const where: Prisma.ParticipationWhereInput = {
+      eventId: { in: eventIds },
+    };
+
+    if (status && status !== 'all') {
+      where.status = status.toUpperCase() as any;
+    }
+
+    if (search) {
+      where.user = {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+        ],
+      };
+    }
+
+    const [participations, total] = await Promise.all([
+      prisma.participation.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              location: true,
+              preferences: true,
+            },
+          },
+          event: {
+            select: {
+              id: true,
+              name: true,
+              date: true,
+              location: true,
+              status: true,
+              maxParticipants: true,
+              _count: {
+                select: { participations: true },
+              },
+            },
+          },
+        },
+        orderBy: { registeredAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.participation.count({ where }),
+    ]);
+
+    const participants = participations.map(p => ({
+      id: p.id,
+      participationId: p.id,
+      userId: p.user.id,
+      name: p.user.name,
+      email: p.user.email,
+      location: p.user.location,
+      preferences: p.user.preferences,
+      status: p.status,
+      registeredAt: p.registeredAt,
+      eventId: p.event.id,
+      eventName: p.event.name,
+      eventDate: p.event.date,
+      eventLocation: p.event.location,
+      eventStatus: p.event.status,
+      eventMaxParticipants: p.event.maxParticipants,
+      eventCurrentParticipants: p.event._count.participations,
+    }));
+
+    return {
+      participants,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get organizer statistics summary
+   */
+  static async getOrganizerStatistics(organizerId: string) {
+    const events = await prisma.event.findMany({
+      where: { organizerId },
+      include: {
+        _count: {
+          select: { participations: true, feedback: true },
+        },
+        participations: {
+          select: { status: true },
+        },
+        feedback: {
+          select: { rating: true },
+        },
+      },
+    });
+
+    const totalParticipants = events.reduce(
+      (sum, e) => sum + e._count.participations, 0
+    );
+
+    const allParticipations = events.flatMap(e => e.participations);
+    const confirmedCount = allParticipations.filter(
+      p => p.status === 'CONFIRMED' || p.status === 'REGISTERED'
+    ).length;
+
+    const allFeedback = events.flatMap(e => e.feedback);
+    const averageRating = allFeedback.length > 0
+      ? allFeedback.reduce((sum, f) => sum + f.rating, 0) / allFeedback.length
+      : 0;
+
+    const activeEvents = events.filter(
+      e => e.status === 'active' && new Date(e.date) >= new Date()
+    ).length;
+
+    const attendanceRate = totalParticipants > 0
+      ? Math.round((confirmedCount / totalParticipants) * 100)
+      : 0;
+
+    return {
+      totalParticipants,
+      activeEvents,
+      attendanceRate,
+      averageRating: Math.round(averageRating * 10) / 10,
+    };
+  }
+
+  /**
+   * Get events with participant details for organizer
+   */
+  static async getOrganizerEventsWithParticipants(organizerId: string) {
+    const events = await prisma.event.findMany({
+      where: { organizerId },
+      include: {
+        _count: {
+          select: { participations: true },
+        },
+        participations: {
+          select: { status: true },
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    return events.map(event => {
+      const confirmedCount = event.participations.filter(
+        p => p.status === 'CONFIRMED' || p.status === 'REGISTERED'
+      ).length;
+
+      return {
+        id: event.id,
+        name: event.name,
+        date: event.date,
+        location: event.location,
+        status: event.status,
+        maxParticipants: event.maxParticipants,
+        currentParticipants: event._count.participations,
+        confirmedCount,
+      };
+    });
+  }
+
+  /**
    * Format event response for consistent API output
    */
   private static formatEventResponse(event: any) {

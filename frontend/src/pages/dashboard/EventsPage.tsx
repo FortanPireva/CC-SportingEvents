@@ -26,9 +26,10 @@ import {
   Loader2,
   Plus
 } from 'lucide-react';
-import { eventService, Event } from '@/services/event.service';
+import { eventService, Event, EventWithParticipation } from '@/services/event.service';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
 
 export default function EventsPage() {
   const navigate = useNavigate();
@@ -39,8 +40,12 @@ export default function EventsPage() {
   const [sortBy, setSortBy] = useState('date');
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [joinedEvents, setJoinedEvents] = useState<EventWithParticipation[]>([]);
+  const [participationStatus, setParticipationStatus] = useState<Record<string, string>>({});
+  const [joiningEventId, setJoiningEventId] = useState<string | null>(null);
+  const [leavingEventId, setLeavingEventId] = useState<string | null>(null);
 
-  // Fetch all events
+  // Fetch all events and participation status
   useEffect(() => {
     const fetchEvents = async () => {
       setIsLoading(true);
@@ -51,6 +56,17 @@ export default function EventsPage() {
         });
         if (response.success && response.data) {
           setEvents(response.data.events);
+          
+          // If user is logged in, fetch participation status
+          if (user) {
+            const eventIds = response.data.events.map(e => e.id);
+            if (eventIds.length > 0) {
+              const statusResponse = await eventService.getParticipationStatus(eventIds);
+              if (statusResponse.success && statusResponse.data) {
+                setParticipationStatus(statusResponse.data.participations);
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to fetch events:', error);
@@ -61,7 +77,106 @@ export default function EventsPage() {
     };
 
     fetchEvents();
-  }, []);
+  }, [user]);
+
+  // Fetch events user is participating in
+  useEffect(() => {
+    const fetchJoinedEvents = async () => {
+      if (!user) {
+        setJoinedEvents([]);
+        return;
+      }
+      
+      try {
+        const response = await eventService.getParticipatingEvents(1, 100);
+        if (response.success && response.data) {
+          setJoinedEvents(response.data.events);
+        }
+      } catch (error) {
+        console.error('Failed to fetch joined events:', error);
+      }
+    };
+
+    fetchJoinedEvents();
+  }, [user]);
+
+  // Handle joining an event
+  const handleJoinEvent = async (eventId: string) => {
+    if (!user) {
+      toast.error('Please sign in to join events');
+      navigate('/auth/signin');
+      return;
+    }
+
+    setJoiningEventId(eventId);
+    try {
+      const response = await eventService.joinEvent(eventId);
+      if (response.success && response.data) {
+        const status = response.data.participation.status;
+        setParticipationStatus(prev => ({ ...prev, [eventId]: status }));
+        
+        // Update joined events list
+        const eventToAdd = events.find(e => e.id === eventId);
+        if (eventToAdd) {
+          setJoinedEvents(prev => [...prev, {
+            ...eventToAdd,
+            participationStatus: status as 'REGISTERED' | 'CONFIRMED' | 'WAITLISTED',
+            registeredAt: new Date().toISOString(),
+          }]);
+          
+          // Update current participants count
+          setEvents(prev => prev.map(e => 
+            e.id === eventId 
+              ? { ...e, currentParticipants: e.currentParticipants + 1 }
+              : e
+          ));
+        }
+
+        toast.success(status === 'WAITLISTED' 
+          ? 'Added to waitlist successfully!' 
+          : 'Joined event successfully!');
+      } else {
+        toast.error(response.error || 'Failed to join event');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to join event');
+    } finally {
+      setJoiningEventId(null);
+    }
+  };
+
+  // Handle leaving an event
+  const handleLeaveEvent = async (eventId: string) => {
+    setLeavingEventId(eventId);
+    try {
+      const response = await eventService.leaveEvent(eventId);
+      if (response.success) {
+        setParticipationStatus(prev => {
+          const updated = { ...prev };
+          delete updated[eventId];
+          return updated;
+        });
+        
+        // Remove from joined events list
+        setJoinedEvents(prev => prev.filter(e => e.id !== eventId));
+        
+        // Update current participants count
+        setEvents(prev => prev.map(e => 
+          e.id === eventId 
+            ? { ...e, currentParticipants: Math.max(0, e.currentParticipants - 1) }
+            : e
+        ));
+
+        toast.success('Left event successfully');
+      } else {
+        toast.error(response.error || 'Failed to leave event');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to leave event');
+    } finally {
+      setLeavingEventId(null);
+    }
+  };
 
   // Map backend status to frontend status
   const mapStatus = (status: string): 'upcoming' | 'ongoing' | 'completed' | 'cancelled' => {
@@ -108,18 +223,24 @@ export default function EventsPage() {
 
   const stats = [
     { title: 'Total Events', value: events.length.toString(), icon: Calendar, trend: `${upcomingEvents.length} upcoming` },
+    ...(user ? [{ title: 'My Joined Events', value: joinedEvents.length.toString(), icon: Users, trend: 'Events you\'re attending' }] : []),
     { title: 'Active Participants', value: events.reduce((sum, e) => sum + e.currentParticipants, 0).toString(), icon: Users, trend: 'Across all events' },
     { title: 'Sports Available', value: [...new Set(events.map(e => e.sportType))].length.toString(), icon: Star, trend: 'Different sports' },
-    { title: 'Avg. Price', value: events.length > 0 ? `$${(events.filter(e => e.price).reduce((sum, e) => sum + (e.price || 0), 0) / (events.filter(e => e.price).length || 1)).toFixed(2)}` : '$0', icon: DollarSign, trend: 'Per event' }
+    ...(user ? [] : [{ title: 'Avg. Price', value: events.length > 0 ? `$${(events.filter(e => e.price).reduce((sum, e) => sum + (e.price || 0), 0) / (events.filter(e => e.price).length || 1)).toFixed(2)}` : '$0', icon: DollarSign, trend: 'Per event' }])
   ];
 
   // Get unique sports from events
   const sports: string[] = ['all', ...Array.from(new Set(events.map(event => event.sportType)))];
   const skillLevels = ['all', 'beginner', 'intermediate', 'advanced'];
 
-  const EventCard = ({ event }: { event: Event }) => {
+  const EventCard = ({ event, showLeaveButton = false }: { event: Event | EventWithParticipation; showLeaveButton?: boolean }) => {
     const eventDate = new Date(event.date);
     const status = mapStatus(event.status);
+    const isJoined = participationStatus[event.id] !== undefined;
+    const userParticipationStatus = participationStatus[event.id];
+    const isJoining = joiningEventId === event.id;
+    const isLeaving = leavingEventId === event.id;
+    const isFull = event.currentParticipants >= event.maxParticipants;
     
     return (
       <Card className="hover:shadow-lg transition-shadow group">
@@ -137,7 +258,12 @@ export default function EventsPage() {
               <Calendar className="h-16 w-16 text-primary/40" />
             </div>
           )}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-4 right-4 flex gap-2">
+            {isJoined && (
+              <Badge variant="default" className="bg-green-500">
+                {userParticipationStatus === 'WAITLISTED' ? 'Waitlisted' : 'Joined'}
+              </Badge>
+            )}
             <Badge variant={status === 'upcoming' ? 'default' : 'secondary'}>
               {status}
             </Badge>
@@ -228,12 +354,40 @@ export default function EventsPage() {
                   <Share2 className="h-4 w-4" />
                 </Button>
               </div>
-              <Button 
-                size="sm" 
-                disabled={event.currentParticipants >= event.maxParticipants}
-              >
-                {status === 'upcoming' ? 'Join Event' : 'View Details'}
-              </Button>
+              {status === 'upcoming' && (
+                isJoined || showLeaveButton ? (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleLeaveEvent(event.id)}
+                    disabled={isLeaving}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    {isLeaving ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <LogOut className="h-4 w-4 mr-1" />
+                    )}
+                    Leave Event
+                  </Button>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleJoinEvent(event.id)}
+                    disabled={isJoining || (isFull && !isJoined)}
+                  >
+                    {isJoining ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : null}
+                    {isFull ? 'Join Waitlist' : 'Join Event'}
+                  </Button>
+                )
+              )}
+              {status !== 'upcoming' && (
+                <Button size="sm" variant="outline">
+                  View Details
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -358,10 +512,15 @@ export default function EventsPage() {
 
         {/* Events Tabs */}
         <Tabs defaultValue="upcoming" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+          <TabsList className={`grid w-full ${user ? 'grid-cols-3 lg:w-[600px]' : 'grid-cols-2 lg:w-[400px]'}`}>
             <TabsTrigger value="upcoming">
               Upcoming Events ({filteredUpcomingEvents.length})
             </TabsTrigger>
+            {user && (
+              <TabsTrigger value="joined">
+                My Joined Events ({joinedEvents.length})
+              </TabsTrigger>
+            )}
             <TabsTrigger value="past">
               Past Events ({filteredPastEvents.length})
             </TabsTrigger>
@@ -394,6 +553,34 @@ export default function EventsPage() {
               </Card>
             )}
           </TabsContent>
+
+          {user && (
+            <TabsContent value="joined" className="space-y-6">
+              {joinedEvents.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {joinedEvents.map((event) => (
+                    <EventCard key={event.id} event={event} showLeaveButton />
+                  ))}
+                </div>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No joined events</h3>
+                    <p className="text-gray-600 text-center mb-4">
+                      You haven't joined any events yet. Browse upcoming events and join one!
+                    </p>
+                    <Button variant="outline" onClick={() => {
+                      const tabs = document.querySelector('[data-state="active"][value="upcoming"]');
+                      if (tabs) (tabs as HTMLElement).click();
+                    }}>
+                      Browse Events
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
           
           <TabsContent value="past" className="space-y-6">
             {filteredPastEvents.length > 0 ? (

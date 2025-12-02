@@ -8,17 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar, Users, MapPin, Clock, Search, Filter, Star, DollarSign, TrendingUp, Eye, Trash2, Plus, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Users, MapPin, Clock, Search, Star, DollarSign, TrendingUp, Eye, Trash2, Plus, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, Loader2 } from 'lucide-react';
 import { eventService, Event } from '@/services/event.service';
 import { toast } from 'sonner';
 
 export default function MyEventsPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('date');
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -47,19 +44,38 @@ export default function MyEventsPage() {
 
   type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   
-  // Map backend status to frontend status for display
-  const mapStatus = (status: string): EventStatus => {
-    switch (status) {
-      case 'active':
-        return 'upcoming';
-      case 'ongoing':
-        return 'ongoing';
-      case 'cancelled':
-        return 'cancelled';
-      case 'completed':
-        return 'completed';
-      default:
-        return 'upcoming';
+  // Calculate event status based on date, time, and backend status
+  const getEventStatus = (event: Event): EventStatus => {
+    // If explicitly cancelled or completed in backend, use that
+    if (event.status === 'cancelled') return 'cancelled';
+    if (event.status === 'completed') return 'completed';
+    
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    
+    // Parse start and end times
+    const [startHour, startMin] = (event.startTime || '00:00').split(':').map(Number);
+    const [endHour, endMin] = (event.endTime || '23:59').split(':').map(Number);
+    
+    // Create datetime objects for event start and end
+    const eventStart = new Date(eventDate);
+    eventStart.setHours(startHour, startMin, 0, 0);
+    
+    const eventEnd = new Date(eventDate);
+    eventEnd.setHours(endHour, endMin, 0, 0);
+    
+    // If event end time is before start time, assume it ends the next day
+    if (eventEnd <= eventStart) {
+      eventEnd.setDate(eventEnd.getDate() + 1);
+    }
+    
+    // Determine status based on current time
+    if (now < eventStart) {
+      return 'upcoming';
+    } else if (now >= eventStart && now <= eventEnd) {
+      return 'ongoing';
+    } else {
+      return 'completed';
     }
   };
 
@@ -68,36 +84,26 @@ export default function MyEventsPage() {
       const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            event.sportType.toLowerCase().includes(searchTerm.toLowerCase());
-      const eventStatus = mapStatus(event.status);
-      const matchesStatus = selectedStatus === 'all' || eventStatus === selectedStatus;
       
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     }).sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
-        case 'participants':
-          return b.currentParticipants - a.currentParticipants;
-        case 'revenue':
-          return ((b.price || 0) * b.currentParticipants) - ((a.price || 0) * a.currentParticipants);
-        default:
-          return 0;
-      }
+      // Sort by date ascending
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
     });
   };
 
   const filteredEvents = filterEvents(events);
-  const upcomingEvents = filteredEvents.filter(event => mapStatus(event.status) === 'upcoming');
-  const ongoingEvents = filteredEvents.filter(event => mapStatus(event.status) === 'ongoing');
-  const completedEvents = filteredEvents.filter(event => mapStatus(event.status) === 'completed');
-  const cancelledEvents = filteredEvents.filter(event => mapStatus(event.status) === 'cancelled');
+  const upcomingEvents = filteredEvents.filter(event => getEventStatus(event) === 'upcoming');
+  const ongoingEvents = filteredEvents.filter(event => getEventStatus(event) === 'ongoing');
+  const completedEvents = filteredEvents.filter(event => getEventStatus(event) === 'completed');
+  const cancelledEvents = filteredEvents.filter(event => getEventStatus(event) === 'cancelled');
 
   const stats = [
     { 
       title: 'Total Events', 
       value: events.length.toString(), 
       icon: Calendar, 
-      trend: `${events.filter(e => mapStatus(e.status) === 'upcoming').length} upcoming`,
+      trend: `${events.filter(e => getEventStatus(e) === 'upcoming').length} upcoming`,
       color: 'text-blue-600'
     },
     { 
@@ -125,9 +131,9 @@ export default function MyEventsPage() {
     }
   ];
 
-  const getStatusIcon = (status: string) => {
-    const mappedStatus = mapStatus(status);
-    switch (mappedStatus) {
+  const getStatusIcon = (event: Event) => {
+    const status = getEventStatus(event);
+    switch (status) {
       case 'upcoming':
         return <Clock className="h-4 w-4 text-blue-500" />;
       case 'ongoing':
@@ -141,9 +147,9 @@ export default function MyEventsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const mappedStatus = mapStatus(status);
-    switch (mappedStatus) {
+  const getStatusColor = (event: Event) => {
+    const status = getEventStatus(event);
+    switch (status) {
       case 'upcoming':
         return 'bg-blue-100 text-blue-800';
       case 'ongoing':
@@ -215,9 +221,9 @@ export default function MyEventsPage() {
             </div>
           )}
           <div className="absolute top-4 right-4 flex space-x-2">
-            <Badge className={getStatusColor(event.status)}>
-              {getStatusIcon(event.status)}
-              <span className="ml-1 capitalize">{mapStatus(event.status)}</span>
+            <Badge className={getStatusColor(event)}>
+              {getStatusIcon(event)}
+              <span className="ml-1 capitalize">{getEventStatus(event)}</span>
             </Badge>
           </div>
         </div>
@@ -290,7 +296,7 @@ export default function MyEventsPage() {
                   <Eye className="h-4 w-4 mr-1" />
                   View
                 </Button>
-                {mapStatus(event.status) !== 'cancelled' && (
+                {getEventStatus(event) !== 'cancelled' && (
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -370,51 +376,20 @@ export default function MyEventsPage() {
           ))}
         </div>
 
-        {/* Filters */}
+        {/* Search */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Filter Events</CardTitle>
+            <CardTitle className="text-lg">Search Events</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search events..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="ongoing">Ongoing</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort By" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="participants">Participants</SelectItem>
-                  <SelectItem value="revenue">Revenue</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Button variant="outline" className="w-full">
-                <Filter className="h-4 w-4 mr-2" />
-                More Filters
-              </Button>
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search by name, description, or sport..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
           </CardContent>
         </Card>

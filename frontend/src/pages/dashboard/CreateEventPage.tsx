@@ -49,7 +49,7 @@ export default function CreateEventPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const sports = [
-    'Basketball', 'Soccer', 'Tennis', 'Volleyball', 'Baseball', 'Swimming',
+    'Basketball', 'Football', 'Tennis', 'Volleyball', 'Baseball', 'Swimming',
     'Running', 'Cycling', 'Yoga', 'Pilates', 'Boxing', 'Martial Arts',
     'Golf', 'Badminton', 'Table Tennis', 'Cricket', 'Rugby', 'Hockey'
   ];

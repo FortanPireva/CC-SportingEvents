@@ -1,119 +1,155 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Search, Filter, Mail, Phone, MapPin, Calendar, Star, TrendingUp, UserPlus, UserMinus, MessageCircle, MoveHorizontal as MoreHorizontal, Download, Send, CircleCheck as CheckCircle, Circle as XCircle, Clock, Award } from 'lucide-react';
-import { mockEvents, mockUsers } from '@/lib/mockData';
-import { User, Event } from '@/lib/types';
+import { Users, Search, Filter, Mail, MapPin, Calendar, Star, TrendingUp, UserPlus, MessageCircle, MoveHorizontal as MoreHorizontal, Download, Send, CircleCheck as CheckCircle, Circle as XCircle, Clock, Award, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { eventService, EventParticipantDetail, EventSummary, OrganizerStatistics } from '@/services/event.service';
 
 export default function ParticipantsPage() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
+  const [sortBy, setSortBy] = useState('date');
+  
+  // Data states
+  const [participants, setParticipants] = useState<EventParticipantDetail[]>([]);
+  const [events, setEvents] = useState<EventSummary[]>([]);
+  const [statistics, setStatistics] = useState<OrganizerStatistics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Pagination
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 0,
+  });
 
-  // Get events organized by current user
-  const myEvents = mockEvents.filter(event => 
-    event.organizer.id === user?.id || event.organizer.email.includes('organizer')
-  );
+  // Fetch data on mount and when filters change
+  useEffect(() => {
+    fetchData();
+  }, [selectedEvent, selectedStatus, pagination.page]);
 
-  // Get all participants from user's events
-  const allParticipants = myEvents.flatMap(event => 
-    event.participants.map(participant => ({
-      ...participant,
-      eventId: event.id,
-      eventTitle: event.title,
-      eventDate: event.date,
-      eventStatus: event.status,
-      joinedDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
-      attendanceStatus: Math.random() > 0.2 ? 'confirmed' : Math.random() > 0.5 ? 'pending' : 'cancelled'
-    }))
-  );
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  const filterParticipants = () => {
-    return allParticipants.filter(participant => {
-      const matchesSearch = participant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           participant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           participant.eventTitle.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesEvent = selectedEvent === 'all' || participant.eventId === selectedEvent;
-      const matchesStatus = selectedStatus === 'all' || participant.attendanceStatus === selectedStatus;
-      
-      return matchesSearch && matchesEvent && matchesStatus;
-    }).sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'event':
-          return a.eventTitle.localeCompare(b.eventTitle);
-        case 'date':
-          return new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime();
-        default:
-          return 0;
+      // Fetch participants, events, and statistics in parallel
+      const [participantsRes, eventsRes, statsRes] = await Promise.all([
+        eventService.getMyParticipants({
+          eventId: selectedEvent !== 'all' ? selectedEvent : undefined,
+          status: selectedStatus !== 'all' ? selectedStatus : undefined,
+          page: pagination.page,
+          limit: pagination.limit,
+        }),
+        eventService.getMyEventsSummary(),
+        eventService.getMyStatistics(),
+      ]);
+
+      if (participantsRes.success && participantsRes.data) {
+        setParticipants(participantsRes.data.participants);
+        setPagination(participantsRes.data.pagination);
       }
-    });
+
+      if (eventsRes.success && eventsRes.data) {
+        setEvents(eventsRes.data.events);
+      }
+
+      if (statsRes.success && statsRes.data) {
+        setStatistics(statsRes.data.statistics);
+      }
+    } catch (err: any) {
+      console.error('Error fetching data:', err);
+      setError(err.message || 'Failed to load participants');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const filteredParticipants = filterParticipants();
+  // Filter participants by search term (client-side for real-time filtering)
+  const filteredParticipants = participants.filter(participant => {
+    const matchesSearch = searchTerm === '' ||
+      participant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      participant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      participant.eventName.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'event':
+        return a.eventName.localeCompare(b.eventName);
+      case 'date':
+        return new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime();
+      default:
+        return 0;
+    }
+  });
 
   const stats = [
     { 
       title: 'Total Participants', 
-      value: allParticipants.length.toString(), 
+      value: statistics?.totalParticipants?.toString() || '0', 
       icon: Users, 
-      trend: '+23 this month',
+      trend: 'All time',
       color: 'text-blue-600'
     },
     { 
       title: 'Active Events', 
-      value: myEvents.filter(e => e.status === 'upcoming' || e.status === 'ongoing').length.toString(), 
+      value: statistics?.activeEvents?.toString() || '0', 
       icon: Calendar, 
-      trend: '+2 this week',
+      trend: 'Upcoming',
       color: 'text-green-600'
     },
     { 
       title: 'Attendance Rate', 
-      value: `${Math.round((allParticipants.filter(p => p.attendanceStatus === 'confirmed').length / allParticipants.length) * 100)}%`, 
+      value: `${statistics?.attendanceRate || 0}%`, 
       icon: CheckCircle, 
-      trend: '+5% this month',
+      trend: 'Confirmed',
       color: 'text-purple-600'
     },
     { 
       title: 'Avg. Rating', 
-      value: '4.7', 
+      value: statistics?.averageRating?.toFixed(1) || '0.0', 
       icon: Star, 
-      trend: '+0.3 this month',
+      trend: 'From feedback',
       color: 'text-yellow-600'
     }
   ];
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'confirmed':
+      case 'registered':
         return 'bg-green-100 text-green-800';
-      case 'pending':
+      case 'waitlisted':
         return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
+      case 'attended':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'confirmed':
+      case 'registered':
+      case 'attended':
         return <CheckCircle className="h-4 w-4" />;
-      case 'pending':
+      case 'waitlisted':
         return <Clock className="h-4 w-4" />;
       case 'cancelled':
         return <XCircle className="h-4 w-4" />;
@@ -122,20 +158,19 @@ export default function ParticipantsPage() {
     }
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
     });
   };
 
-  const ParticipantCard = ({ participant }: { participant: any }) => (
+  const ParticipantCard = ({ participant }: { participant: EventParticipantDetail }) => (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex items-start space-x-4">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={participant.avatar} alt={participant.name} />
             <AvatarFallback>
               {participant.name.split(' ').map((n: string) => n[0]).join('')}
             </AvatarFallback>
@@ -146,15 +181,17 @@ export default function ParticipantsPage() {
               <div>
                 <h4 className="font-medium text-gray-900">{participant.name}</h4>
                 <p className="text-sm text-gray-500">{participant.email}</p>
-                <p className="text-sm text-gray-500 flex items-center mt-1">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {participant.location}
-                </p>
+                {participant.location && (
+                  <p className="text-sm text-gray-500 flex items-center mt-1">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {participant.location}
+                  </p>
+                )}
               </div>
               <div className="flex items-center space-x-2">
-                <Badge className={getStatusColor(participant.attendanceStatus)}>
-                  {getStatusIcon(participant.attendanceStatus)}
-                  <span className="ml-1 capitalize">{participant.attendanceStatus}</span>
+                <Badge className={getStatusColor(participant.status)}>
+                  {getStatusIcon(participant.status)}
+                  <span className="ml-1 capitalize">{participant.status.toLowerCase()}</span>
                 </Badge>
                 <Button variant="ghost" size="sm">
                   <MoreHorizontal className="h-4 w-4" />
@@ -165,17 +202,17 @@ export default function ParticipantsPage() {
             <div className="mt-3 space-y-2">
               <div className="flex items-center text-sm text-gray-600">
                 <Calendar className="h-3 w-3 mr-2" />
-                <span className="font-medium">{participant.eventTitle}</span>
+                <span className="font-medium">{participant.eventName}</span>
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <Clock className="h-3 w-3 mr-2" />
-                Joined {formatDate(participant.joinedDate)}
+                Joined {formatDate(participant.registeredAt)}
               </div>
-              {participant.preferences && (
+              {participant.preferences && Array.isArray(participant.preferences) && participant.preferences.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {participant.preferences.slice(0, 3).map((sport: string, index: number) => (
+                  {participant.preferences.slice(0, 3).map((pref: string, index: number) => (
                     <Badge key={index} variant="outline" className="text-xs">
-                      {sport}
+                      {pref}
                     </Badge>
                   ))}
                 </div>
@@ -203,67 +240,67 @@ export default function ParticipantsPage() {
     </Card>
   );
 
-  const EventParticipants = ({ event }: { event: Event }) => {
-    const eventParticipants = allParticipants.filter(p => p.eventId === event.id);
-    const confirmedCount = eventParticipants.filter(p => p.attendanceStatus === 'confirmed').length;
-    const fillRate = Math.round((event.currentParticipants / event.maxParticipants) * 100);
+  const EventParticipants = ({ event }: { event: EventSummary }) => {
+    const fillRate = event.maxParticipants > 0 
+      ? Math.round((event.currentParticipants / event.maxParticipants) * 100)
+      : 0;
     
     return (
-      <Card>
-        <CardHeader>
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">{event.title}</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base">{event.name}</CardTitle>
+              <CardDescription className="text-xs">
                 {formatDate(event.date)} • {event.location}
               </CardDescription>
             </div>
-            <Badge variant={event.status === 'upcoming' ? 'default' : 'secondary'}>
+            <Badge variant={event.status === 'active' ? 'default' : 'secondary'}>
               {event.status}
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
+        <CardContent className="pt-2">
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <div className="text-2xl font-bold text-blue-600">{event.currentParticipants}</div>
+                <div className="text-lg font-bold text-blue-600">{event.currentParticipants}</div>
                 <div className="text-xs text-gray-500">Registered</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-green-600">{confirmedCount}</div>
+                <div className="text-lg font-bold text-green-600">{event.confirmedCount}</div>
                 <div className="text-xs text-gray-500">Confirmed</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-purple-600">{fillRate}%</div>
+                <div className="text-lg font-bold text-purple-600">{fillRate}%</div>
                 <div className="text-xs text-gray-500">Capacity</div>
               </div>
             </div>
             
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
                 <span>Capacity</span>
                 <span>{event.currentParticipants}/{event.maxParticipants}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div 
-                  className={`h-2 rounded-full ${
+                  className={`h-1.5 rounded-full ${
                     fillRate >= 90 ? 'bg-red-500' : 
                     fillRate >= 70 ? 'bg-yellow-500' : 'bg-green-500'
                   }`}
-                  style={{ width: `${fillRate}%` }}
+                  style={{ width: `${Math.min(fillRate, 100)}%` }}
                 ></div>
               </div>
             </div>
             
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm" className="flex-1">
-                <UserPlus className="h-4 w-4 mr-1" />
+              <Button variant="outline" size="sm" className="flex-1 text-xs">
+                <UserPlus className="h-3 w-3 mr-1" />
                 Invite
               </Button>
-              <Button variant="outline" size="sm" className="flex-1">
-                <Send className="h-4 w-4 mr-1" />
-                Message All
+              <Button variant="outline" size="sm" className="flex-1 text-xs">
+                <Send className="h-3 w-3 mr-1" />
+                Message
               </Button>
             </div>
           </div>
@@ -271,6 +308,16 @@ export default function ParticipantsPage() {
       </Card>
     );
   };
+
+  if (isLoading && participants.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -294,6 +341,18 @@ export default function ParticipantsPage() {
             </Button>
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <p className="text-red-600">{error}</p>
+              <Button variant="outline" size="sm" className="mt-2" onClick={fetchData}>
+                Try Again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -340,8 +399,8 @@ export default function ParticipantsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Events</SelectItem>
-                      {myEvents.map((event) => (
-                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                      {events.map((event) => (
+                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -352,9 +411,11 @@ export default function ParticipantsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="confirmed">Confirmed</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="REGISTERED">Registered</SelectItem>
+                      <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                      <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                      <SelectItem value="ATTENDED">Attended</SelectItem>
                     </SelectContent>
                   </Select>
                   
@@ -377,11 +438,18 @@ export default function ParticipantsPage() {
               </CardContent>
             </Card>
 
+            {/* Loading indicator for filter changes */}
+            {isLoading && participants.length > 0 && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            )}
+
             {/* Participants */}
             <div className="space-y-4">
               {filteredParticipants.length > 0 ? (
-                filteredParticipants.map((participant, index) => (
-                  <ParticipantCard key={`${participant.id}-${participant.eventId}-${index}`} participant={participant} />
+                filteredParticipants.map((participant) => (
+                  <ParticipantCard key={participant.id} participant={participant} />
                 ))
               ) : (
                 <Card>
@@ -389,16 +457,43 @@ export default function ParticipantsPage() {
                     <Users className="h-12 w-12 text-gray-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No participants found</h3>
                     <p className="text-gray-600 text-center mb-4">
-                      Try adjusting your filters or invite more people to your events.
+                      {participants.length === 0 
+                        ? "You don't have any participants yet. Create events and invite people to join!"
+                        : "Try adjusting your filters or search term."}
                     </p>
-                    <Button>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Invite Participants
-                    </Button>
+                    {participants.length === 0 && (
+                      <Button>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite Participants
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
             </div>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex justify-center gap-2">
+                <Button 
+                  variant="outline" 
+                  disabled={pagination.page === 1}
+                  onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-4 text-sm text-gray-600">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  disabled={pagination.page === pagination.totalPages}
+                  onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -409,14 +504,22 @@ export default function ParticipantsPage() {
                 <CardTitle className="text-lg">Event Overview</CardTitle>
                 <CardDescription>Participants by event</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {myEvents.slice(0, 3).map((event) => (
-                  <EventParticipants key={event.id} event={event} />
-                ))}
-                {myEvents.length > 3 && (
-                  <Button variant="outline" className="w-full">
-                    View All Events
-                  </Button>
+              <CardContent className="space-y-2">
+                {events.length > 0 ? (
+                  <>
+                    {events.slice(0, 3).map((event) => (
+                      <EventParticipants key={event.id} event={event} />
+                    ))}
+                    {events.length > 3 && (
+                      <Button variant="outline" className="w-full">
+                        View All Events ({events.length})
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No events yet
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -452,24 +555,28 @@ export default function ParticipantsPage() {
                 <CardTitle className="text-lg">Recent Activity</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {allParticipants.slice(0, 5).map((participant, index) => (
-                  <div key={index} className="flex items-start space-x-3">
+                {participants.slice(0, 5).map((participant) => (
+                  <div key={participant.id} className="flex items-start space-x-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={participant.avatar} alt={participant.name} />
                       <AvatarFallback className="text-xs">
                         {participant.name.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-900">
-                        <span className="font-medium">{participant.name}</span> joined {participant.eventTitle}
+                        <span className="font-medium">{participant.name}</span> joined {participant.eventName}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formatDate(participant.joinedDate)}
+                        {formatDate(participant.registeredAt)}
                       </p>
                     </div>
                   </div>
                 ))}
+                {participants.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center">
+                    No recent activity
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
