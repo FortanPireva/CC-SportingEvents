@@ -66,5 +66,17 @@ router.post(
   AuthController.resetPassword
 );
 
+/**
+ * @route   PUT /api/auth/profile
+ * @desc    Update user profile (name, avatar)
+ * @access  Private
+ */
+router.put(
+  '/profile',
+  authenticate,
+  AuthController.updateProfileValidation,
+  AuthController.updateProfile
+);
+
 export default router;
 

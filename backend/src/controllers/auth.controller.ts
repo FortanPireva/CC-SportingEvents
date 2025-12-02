@@ -263,5 +263,54 @@ export class AuthController {
       });
     }
   }
+
+  static updateProfileValidation = [
+    body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+    body('avatar').optional().isString().withMessage('Avatar must be a string URL'),
+  ];
+
+  static async updateProfile(req: AuthRequest, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const { name, avatar } = req.body;
+
+      const user = await AuthService.updateProfile(userId, { name, avatar });
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: { user },
+      });
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+
+      if (error.message === 'User not found') {
+        return res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update profile',
+      });
+    }
+  }
 }
 

@@ -78,6 +78,7 @@ export interface AuthUserData {
   id: string;
   name: string;
   email: string;
+  avatar?: string;
   role: 'USER' | 'ORGANIZER' | 'ADMIN' | 'GUEST';
   location?: string;
   createdAt: string;
@@ -129,6 +130,10 @@ export const authApi = {
 
   resetPassword: async (userId: string, newPassword: string) => {
     return api.post('/auth/reset-password', { userId, newPassword });
+  },
+
+  updateProfile: async (data: { name?: string; avatar?: string }) => {
+    return api.put<{ user: AuthUserData }>('/auth/profile', data);
   },
 };
 

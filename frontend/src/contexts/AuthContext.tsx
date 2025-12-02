@@ -178,6 +178,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (data: { name?: string; avatar?: string }) => {
+    try {
+      const response = await authApi.updateProfile(data);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to update profile');
+      }
+
+      const userData = response.data.user;
+      
+      // Update local user state with the new data
+      const userWithType = {
+        ...userData,
+        createdAt: new Date(userData.createdAt),
+        type: userData.role === 'ORGANIZER' ? 'organizer' as const : 'user' as const,
+        joinedAt: new Date(userData.createdAt),
+      };
+      
+      setUser(userWithType);
+      localStorage.setItem('cc_user', JSON.stringify(userWithType));
+    } catch (error: any) {
+      console.error('Update profile error:', error);
+      throw new Error(error.message || 'Failed to update profile');
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -187,7 +213,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       resetPassword,
       verifyOTP,
-      resetPasswordWithToken
+      resetPasswordWithToken,
+      updateProfile
     }}>
       {children}
     </AuthContext.Provider>

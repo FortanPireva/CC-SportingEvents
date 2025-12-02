@@ -86,6 +86,7 @@ export class AuthService {
         name: true,
         email: true,
         password: true,
+        avatar: true,
         location: true,
         role: true,
         createdAt: true,
@@ -127,6 +128,7 @@ export class AuthService {
           id: true,
           name: true,
           email: true,
+          avatar: true,
           location: true,
           role: true,
           createdAt: true,
@@ -142,6 +144,47 @@ export class AuthService {
     } catch (error) {
       throw new Error('Invalid token');
     }
+  }
+
+  /**
+   * Update user profile (name, avatar)
+   * @param userId - User ID
+   * @param data - Profile data to update
+   */
+  static async updateProfile(userId: string, data: { name?: string; avatar?: string }) {
+    const { name, avatar } = data;
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Build update data
+    const updateData: { name?: string; avatar?: string } = {};
+    if (name !== undefined) updateData.name = name;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        location: true,
+        role: true,
+        createdAt: true,
+        preferences: true,
+      },
+    });
+
+    return updatedUser;
   }
 
   /**

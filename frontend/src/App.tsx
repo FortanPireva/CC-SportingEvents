@@ -11,6 +11,7 @@ import EventsPage from '@/pages/dashboard/EventsPage';
 import VenuesPage from '@/pages/dashboard/VenuesPage';
 import CommunityPage from '@/pages/dashboard/CommunityPage';
 import ReviewsPage from '@/pages/dashboard/ReviewsPage';
+import SettingsPage from '@/pages/dashboard/SettingsPage';
 import HomePage from './pages/HomePage';
 import VigiPage from './pages/VigiPage';
 import MyEventsPage from './pages/dashboard/MyEventsPage';
@@ -36,6 +37,7 @@ function App() {
         <Route path="/dashboard/my-events" element={<MyEventsPage />} />
         <Route path="/dashboard/create-event" element={<CreateEventPage />} />
         <Route path="/dashboard/participants" element={<ParticipantsPage />} />
+        <Route path="/dashboard/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />

@@ -56,4 +56,5 @@ export interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   verifyOTP: (email: string, otpCode: string) => Promise<string>; // Returns userId
   resetPasswordWithToken: (email: string, otpCode: string, newPassword: string) => Promise<void>;
+  updateProfile: (data: { name?: string; avatar?: string }) => Promise<void>;
 }
