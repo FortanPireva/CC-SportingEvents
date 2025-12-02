@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Logo */}
           <div className="flex items-center flex-shrink-0 px-4 py-6">
             <Activity className="h-8 w-8 text-primary" />
-            <span className="ml-2 text-xl font-bold text-gray-900">CC Sports</span>
+            <span className="ml-2 text-xl font-bold text-gray-900">CC Sporting Events</span>
           </div>
 
           {/* Navigation */}
@@ -131,7 +131,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="flex flex-col h-full">
                   <div className="flex items-center px-4 py-6">
                     <Activity className="h-8 w-8 text-primary" />
-                    <span className="ml-2 text-xl font-bold">CC Sports</span>
+                    <span className="ml-2 text-xl font-bold">CC Sporting Events</span>
                   </div>
                   <nav className="flex-1 px-4 space-y-1">
                     {currentNavigation.map((item) => (
@@ -152,7 +152,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </SheetContent>
             </Sheet>
             <Activity className="h-6 w-6 text-primary" />
-            <span className="font-bold">CC Sports</span>
+            <span className="font-bold">CC Sporting Events</span>
           </div>
 
           <div className="flex items-center space-x-2">

@@ -460,7 +460,7 @@ export default function CreateEventPage() {
         </div>
 
         <div className="md:col-span-2">
-          <Label htmlFor="tags">Event Tags</Label>
+          <Label htmlFor="tags">Event Tags (Optional)</Label>
           <div className="flex space-x-2 mb-2">
             <Input
               placeholder="Add tags (e.g., competitive, beginner-friendly)"

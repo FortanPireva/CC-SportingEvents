@@ -292,10 +292,7 @@ export default function MyEventsPage() {
             
             <div className="flex justify-between items-center pt-3 border-t">
               <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Eye className="h-4 w-4 mr-1" />
-                  View
-                </Button>
+                
                 {getEventStatus(event) !== 'cancelled' && (
                   <Button 
                     variant="outline" 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,15 +13,15 @@ import {
   Users, 
   MapPin, 
   Clock,
-  TrendingUp,
+  DollarSign,
   Activity,
   Plus,
   Star,
-  ArrowRight,
   AlertCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAnalytics, isOrganizerStats, isUserStats, UpcomingEvent, RecentActivity } from '@/hooks/useAnalytics';
+import { eventService, Event } from '@/services/event.service';
 
 // Helper to format relative time
 function formatRelativeTime(timestamp: string): string {
@@ -49,6 +50,43 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { analytics, isLoading, error, refetch } = useAnalytics();
+  const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+
+  // Fetch organizer's events to calculate revenue dynamically
+  useEffect(() => {
+    const fetchOrganizerEvents = async () => {
+      if (user?.type === 'organizer' || analytics?.userType === 'organizer') {
+        setEventsLoading(true);
+        try {
+          const response = await eventService.getMyEvents(1, 100);
+          if (response.success && response.data) {
+            setOrganizerEvents(response.data.events);
+          }
+        } catch (error) {
+          console.error('Failed to fetch organizer events:', error);
+        } finally {
+          setEventsLoading(false);
+        }
+      }
+    };
+
+    fetchOrganizerEvents();
+  }, [user?.type, analytics?.userType]);
+
+  // Calculate revenue from events (price * currentParticipants)
+  const calculateTotalRevenue = () => {
+    return organizerEvents.reduce((sum, event) => sum + (event.price || 0) * event.currentParticipants, 0);
+  };
+
+  // Calculate this month's revenue
+  const calculateRevenueThisMonth = () => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return organizerEvents
+      .filter(event => new Date(event.createdAt) >= startOfMonth)
+      .reduce((sum, event) => sum + (event.price || 0) * event.currentParticipants, 0);
+  };
 
   // Build stats array based on user type and analytics data
   const getStats = () => {
@@ -56,6 +94,8 @@ export default function DashboardPage() {
 
     if (analytics.userType === 'organizer' && isOrganizerStats(analytics.stats)) {
       const stats = analytics.stats;
+      const totalRevenue = calculateTotalRevenue();
+      const revenueThisMonth = calculateRevenueThisMonth();
       return [
         { 
           title: 'Events Created', 
@@ -67,7 +107,7 @@ export default function DashboardPage() {
           title: 'Total Participants', 
           value: stats.totalParticipants.toString(), 
           icon: Users, 
-          trend: `+${stats.participantsThisWeek} this week` 
+          trend: `+${stats.participantsThisWeek} this month` 
         },
         { 
           title: 'Average Rating', 
@@ -76,10 +116,10 @@ export default function DashboardPage() {
           trend: `${stats.ratingChangeThisMonth >= 0 ? '+' : ''}${stats.ratingChangeThisMonth.toFixed(1)} this month` 
         },
         { 
-          title: 'Revenue', 
-          value: `$${stats.totalRevenue.toLocaleString()}`, 
-          icon: TrendingUp, 
-          trend: `+$${stats.revenueThisMonth.toLocaleString()} this month` 
+          title: 'Revenue Generated', 
+          value: `$${totalRevenue.toFixed(2)}`, 
+          icon: DollarSign, 
+          trend: `+$${revenueThisMonth.toFixed(2)} this month` 
         }
       ];
     } else if (isUserStats(analytics.stats)) {
@@ -119,7 +159,7 @@ export default function DashboardPage() {
   const isOrganizer = analytics?.userType === 'organizer' || user?.type === 'organizer';
 
   // Loading skeleton
-  if (isLoading) {
+  if (isLoading || (isOrganizer && eventsLoading)) {
     return (
       <DashboardLayout>
         <div className="p-6 space-y-6">
