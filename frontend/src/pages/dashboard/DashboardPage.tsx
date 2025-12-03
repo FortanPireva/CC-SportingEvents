@@ -101,25 +101,29 @@ export default function DashboardPage() {
           title: 'Events Created', 
           value: stats.eventsCreated.toString(), 
           icon: Calendar, 
-          trend: `+${stats.eventsCreatedThisMonth} this month` 
+          trend: `+${stats.eventsCreatedThisMonth} this month`,
+          color: 'text-blue-600'
         },
         { 
           title: 'Total Participants', 
           value: stats.totalParticipants.toString(), 
           icon: Users, 
-          trend: `+${stats.participantsThisWeek} this month` 
+          trend: `+${stats.participantsThisWeek} this month`,
+          color: 'text-black-600' 
         },
         { 
           title: 'Average Rating', 
           value: stats.averageRating.toFixed(1), 
           icon: Star, 
-          trend: `From feedback (1-10)` 
+          trend: `From feedback (1-10)`,
+          color: 'text-yellow-600' 
         },
         { 
           title: 'Revenue Generated', 
           value: `$${totalRevenue.toFixed(2)}`, 
           icon: DollarSign, 
-          trend: `+$${revenueThisMonth.toFixed(2)} this month` 
+          trend: `+$${revenueThisMonth.toFixed(2)} this month`,
+          color: 'text-green-600' 
         }
       ];
     } else if (isUserStats(analytics.stats)) {
@@ -271,7 +275,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                <stat.icon className={"h-4 w-4 " + stat.color} />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>

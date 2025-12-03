@@ -102,20 +102,22 @@ export default function ParticipantsPage() {
       value: statistics?.totalParticipants?.toString() || '0', 
       icon: Users, 
       trend: 'All time',
-      color: 'text-blue-600'
+      color: 'text-black-600'
     },
     { 
       title: 'Active Events', 
       value: statistics?.activeEvents?.toString() || '0', 
       icon: Calendar, 
       trend: 'Upcoming',
-      color: 'text-green-600'
+      color: 'text-blue-600'
     },
     { 
-      title: 'Attendance Rate', 
-      value: `${statistics?.attendanceRate || 0}%`, 
+      title: 'Average Capacity', 
+      value: events.length > 0 
+        ? `${Math.round(events.reduce((sum, e) => sum + (e.currentParticipants / e.maxParticipants * 100), 0) / events.length)}%` 
+        : '0%', 
       icon: CheckCircle, 
-      trend: 'Registered',
+      trend: 'Fill rate',
       color: 'text-purple-600'
     },
     { 

@@ -111,23 +111,23 @@ export default function MyEventsPage() {
       value: events.reduce((sum, event) => sum + event.currentParticipants, 0).toString(), 
       icon: Users, 
       trend: 'Across all events',
-      color: 'text-green-600'
+      color: 'text-black-600'
     },
     { 
       title: 'Revenue Generated', 
       value: `$${events.reduce((sum, event) => sum + (event.price || 0) * event.currentParticipants, 0).toFixed(2)}`, 
       icon: DollarSign, 
       trend: 'Total earnings',
-      color: 'text-purple-600'
+      color: 'text-green-600'
     },
     { 
-      title: 'Avg. Capacity', 
+      title: 'Average Capacity', 
       value: events.length > 0 
         ? `${Math.round(events.reduce((sum, e) => sum + (e.currentParticipants / e.maxParticipants * 100), 0) / events.length)}%` 
         : '0%', 
-      icon: Star, 
+      icon: CheckCircle, 
       trend: 'Fill rate',
-      color: 'text-yellow-600'
+      color: 'text-purple-600'
     }
   ];
 
