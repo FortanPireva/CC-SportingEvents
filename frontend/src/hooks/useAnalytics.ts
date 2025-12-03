@@ -19,8 +19,8 @@ export interface UserStats {
   hoursThisWeek: number;
   sportsTried: number;
   sportsTriedThisMonth: number;
-  connectionsMade: number;
-  connectionsThisMonth: number;
+  moneySpent: number;
+  moneySpentThisMonth: number;
 }
 
 export interface RecentActivity {

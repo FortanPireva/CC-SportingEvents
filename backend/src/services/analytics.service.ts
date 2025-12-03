@@ -19,8 +19,8 @@ export interface UserStats {
   hoursThisWeek: number;
   sportsTried: number;
   sportsTriedThisMonth: number;
-  connectionsMade: number;
-  connectionsThisMonth: number;
+  moneySpent: number;
+  moneySpentThisMonth: number;
 }
 
 export interface RecentActivity {
@@ -267,17 +267,15 @@ export class AnalyticsService {
     );
     const sportsTriedThisMonth = sportsThisMonth.size;
 
-    // Connections made (unique users from same events)
-    const connections = new Set<string>();
-    const connectionsThisMonthSet = new Set<string>();
+    // Money spent on events
+    let moneySpent = 0;
+    let moneySpentThisMonth = 0;
     for (const participation of activeParticipations) {
-      for (const otherParticipant of participation.event.participations) {
-        if (otherParticipant.userId !== userId) {
-          connections.add(otherParticipant.userId);
-          if (participation.registeredAt >= startOfMonth) {
-            connectionsThisMonthSet.add(otherParticipant.userId);
-          }
-        }
+      const event = participation.event;
+      const price = (event.sponsorDetails as any)?.price || 0;
+      moneySpent += price;
+      if (participation.registeredAt >= startOfMonth) {
+        moneySpentThisMonth += price;
       }
     }
 
@@ -288,8 +286,8 @@ export class AnalyticsService {
       hoursThisWeek: Math.round(hoursThisWeek),
       sportsTried,
       sportsTriedThisMonth,
-      connectionsMade: connections.size,
-      connectionsThisMonth: connectionsThisMonthSet.size,
+      moneySpent: Math.round(moneySpent * 100) / 100, // Round to 2 decimal places
+      moneySpentThisMonth: Math.round(moneySpentThisMonth * 100) / 100,
     };
 
     // Get upcoming events the user has joined or might be interested in

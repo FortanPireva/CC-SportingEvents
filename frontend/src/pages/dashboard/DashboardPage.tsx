@@ -133,25 +133,29 @@ export default function DashboardPage() {
           title: 'Events Joined', 
           value: stats.eventsJoined.toString(), 
           icon: Calendar, 
-          trend: `+${stats.eventsJoinedThisMonth} this month` 
+          trend: `+${stats.eventsJoinedThisMonth} this month`,
+          color: 'text-purple-600'  
         },
         { 
           title: 'Hours Active', 
           value: stats.hoursActive.toString(), 
           icon: Clock, 
-          trend: `+${stats.hoursThisWeek} this week` 
+          trend: `+${stats.hoursThisWeek} this month`,
+          color: 'text-black-600'  
         },
         { 
           title: 'Sports Tried', 
           value: stats.sportsTried.toString(), 
           icon: Activity, 
-          trend: `+${stats.sportsTriedThisMonth} this month` 
+          trend: `+${stats.sportsTriedThisMonth} this month`,
+          color: 'text-blue-600'  
         },
         { 
-          title: 'Friends Made', 
-          value: stats.connectionsMade.toString(), 
-          icon: Users, 
-          trend: `+${stats.connectionsThisMonth} this month` 
+          title: 'Money Spent', 
+          value: `$${stats.moneySpent.toFixed(2)}`, 
+          icon: DollarSign, 
+          trend: `+$${stats.moneySpentThisMonth.toFixed(2)} this month`,
+          color: 'text-green-600' 
         }
       ];
     }
