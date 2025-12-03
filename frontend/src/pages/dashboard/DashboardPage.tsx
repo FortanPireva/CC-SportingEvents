@@ -335,7 +335,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex items-center">
                             <Clock className="mr-1 h-3 w-3" />
-                            {event.startTime}
+                            {event.startTime} - {event.endTime}
                           </div>
                           <div className="flex items-center">
                             <MapPin className="mr-1 h-3 w-3" />

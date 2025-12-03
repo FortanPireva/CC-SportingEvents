@@ -251,7 +251,7 @@ export default function MyEventsPage() {
               </div>
               <div className="flex items-center text-gray-600">
                 <Clock className="mr-2 h-4 w-4" />
-                {event.startTime}
+                {event.startTime} - {event.endTime}
               </div>
               <div className="flex items-center text-gray-600">
                 <MapPin className="mr-2 h-4 w-4" />

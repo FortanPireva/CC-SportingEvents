@@ -120,7 +120,7 @@ export default function EventsPage() {
         if (eventToAdd) {
           setJoinedEvents(prev => [...prev, {
             ...eventToAdd,
-            participationStatus: status as 'REGISTERED' | 'CONFIRMED' | 'WAITLISTED',
+            participationStatus: 'REGISTERED' as const,
             registeredAt: new Date().toISOString(),
           }]);
           
@@ -132,9 +132,7 @@ export default function EventsPage() {
           ));
         }
 
-        toast.success(status === 'WAITLISTED' 
-          ? 'Added to waitlist successfully!' 
-          : 'Joined event successfully!');
+        toast.success('Joined event successfully!');
       } else {
         toast.error(response.error || 'Failed to join event');
       }
@@ -237,7 +235,6 @@ export default function EventsPage() {
     const eventDate = new Date(event.date);
     const status = mapStatus(event.status);
     const isJoined = participationStatus[event.id] !== undefined;
-    const userParticipationStatus = participationStatus[event.id];
     const isJoining = joiningEventId === event.id;
     const isLeaving = leavingEventId === event.id;
     const isFull = event.currentParticipants >= event.maxParticipants;
@@ -261,7 +258,7 @@ export default function EventsPage() {
           <div className="absolute top-4 right-4 flex gap-2">
             {isJoined && (
               <Badge variant="default" className="bg-green-500">
-                {userParticipationStatus === 'WAITLISTED' ? 'Waitlisted' : 'Joined'}
+                Registered
               </Badge>
             )}
             <Badge variant={status === 'upcoming' ? 'default' : 'secondary'}>
@@ -294,7 +291,7 @@ export default function EventsPage() {
                 </div>
                 <div className="flex items-center">
                   <Clock className="mr-1 h-4 w-4" />
-                  {event.startTime}
+                  {event.startTime} - {event.endTime}
                 </div>
               </div>
               {event.price !== undefined && event.price > 0 && (
@@ -374,12 +371,12 @@ export default function EventsPage() {
                   <Button 
                     size="sm" 
                     onClick={() => handleJoinEvent(event.id)}
-                    disabled={isJoining || (isFull && !isJoined)}
+                    disabled={isJoining || isFull}
                   >
                     {isJoining ? (
                       <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                     ) : null}
-                    {isFull ? 'Join Waitlist' : 'Join Event'}
+                    {isFull ? 'Event Full' : 'Join Event'}
                   </Button>
                 )
               )}
