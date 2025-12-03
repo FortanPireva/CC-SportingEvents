@@ -8,17 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Filter, Mail, MapPin, Calendar, Star, TrendingUp, UserPlus, MessageCircle, MoveHorizontal as MoreHorizontal, Download, Send, CircleCheck as CheckCircle, Circle as XCircle, Clock, Award, Loader2 } from 'lucide-react';
+import { Users, Search, Mail, MapPin, Calendar, Star, TrendingUp, MessageCircle, Download, CircleCheck as CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService, EventParticipantDetail, EventSummary, OrganizerStatistics } from '@/services/event.service';
 import * as XLSX from 'xlsx';
 
 export default function ParticipantsPage() {
-  const { user } = useAuth();
+  useAuth(); // Ensure user is authenticated
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [showAllEvents, setShowAllEvents] = useState(false);
   
   // Data states
   const [participants, setParticipants] = useState<EventParticipantDetail[]>([]);
@@ -38,7 +38,7 @@ export default function ParticipantsPage() {
   // Fetch data on mount and when filters change
   useEffect(() => {
     fetchData();
-  }, [selectedEvent, selectedStatus, pagination.page]);
+  }, [selectedEvent, pagination.page]);
 
   const fetchData = async () => {
     try {
@@ -49,7 +49,6 @@ export default function ParticipantsPage() {
       const [participantsRes, eventsRes, statsRes] = await Promise.all([
         eventService.getMyParticipants({
           eventId: selectedEvent !== 'all' ? selectedEvent : undefined,
-          status: selectedStatus !== 'all' ? selectedStatus : undefined,
           page: pagination.page,
           limit: pagination.limit,
         }),
@@ -116,47 +115,24 @@ export default function ParticipantsPage() {
       title: 'Attendance Rate', 
       value: `${statistics?.attendanceRate || 0}%`, 
       icon: CheckCircle, 
-      trend: 'Confirmed',
+      trend: 'Registered',
       color: 'text-purple-600'
     },
     { 
-      title: 'Avg. Rating', 
+      title: 'Average Rating', 
       value: statistics?.averageRating?.toFixed(1) || '0.0', 
       icon: Star, 
-      trend: 'From feedback',
+      trend: 'From feedback (1-10)',
       color: 'text-yellow-600'
     }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-      case 'registered':
-        return 'bg-green-100 text-green-800';
-      case 'waitlisted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'attended':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getStatusColor = () => {
+    return 'bg-green-100 text-green-800';
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-      case 'registered':
-      case 'attended':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'waitlisted':
-        return <Clock className="h-4 w-4" />;
-      case 'cancelled':
-        return <XCircle className="h-4 w-4" />;
-      default:
-        return <Clock className="h-4 w-4" />;
-    }
+  const getStatusIcon = () => {
+    return <CheckCircle className="h-4 w-4" />;
   };
 
   const formatDate = (date: string | Date) => {
@@ -165,6 +141,19 @@ export default function ParticipantsPage() {
       month: 'short', 
       day: 'numeric' 
     });
+  };
+
+  // Helper to format relative time (same as Dashboard)
+  const formatRelativeTime = (timestamp: string | Date): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    return date.toLocaleDateString();
   };
 
   const exportToExcel = () => {
@@ -180,13 +169,11 @@ export default function ParticipantsPage() {
     const excelData = dataToExport.map((participant) => ({
       'Name': participant.name,
       'Email': participant.email,
-      'Location': participant.location || 'N/A',
       'Status': participant.status,
       'Event Name': participant.eventName,
       'Event Date': formatDate(participant.eventDate),
       'Event Location': participant.eventLocation,
       'Registered At': formatDate(participant.registeredAt),
-      'Preferences': participant.preferences?.join(', ') || 'N/A',
     }));
 
     // Create workbook and worksheet
@@ -197,13 +184,11 @@ export default function ParticipantsPage() {
     const columnWidths = [
       { wch: 25 },  // Name
       { wch: 30 },  // Email
-      { wch: 20 },  // Location
       { wch: 12 },  // Status
       { wch: 30 },  // Event Name
       { wch: 15 },  // Event Date
       { wch: 25 },  // Event Location
       { wch: 15 },  // Registered At
-      { wch: 30 },  // Preferences
     ];
     worksheet['!cols'] = columnWidths;
 
@@ -240,15 +225,10 @@ export default function ParticipantsPage() {
                   </p>
                 )}
               </div>
-              <div className="flex items-center space-x-2">
-                <Badge className={getStatusColor(participant.status)}>
-                  {getStatusIcon(participant.status)}
-                  <span className="ml-1 capitalize">{participant.status.toLowerCase()}</span>
-                </Badge>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
+              <Badge className={getStatusColor()}>
+                {getStatusIcon()}
+                <span className="ml-1">Registered</span>
+              </Badge>
             </div>
             
             <div className="mt-3 space-y-2">
@@ -269,23 +249,7 @@ export default function ParticipantsPage() {
                   ))}
                 </div>
               )}
-            </div>
-            
-            <div className="flex items-center justify-between mt-4 pt-3 border-t">
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm">
-                  <Mail className="h-4 w-4 mr-1" />
-                  Email
-                </Button>
-                <Button variant="outline" size="sm">
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  Message
-                </Button>
-              </div>
-              <Button variant="outline" size="sm">
-                View Profile
-              </Button>
-            </div>
+            </div> 
           </div>
         </div>
       </CardContent>
@@ -314,14 +278,10 @@ export default function ParticipantsPage() {
         </CardHeader>
         <CardContent className="pt-2">
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div className="text-lg font-bold text-blue-600">{event.currentParticipants}</div>
+                <div className="text-lg font-bold text-green-600">{event.currentParticipants}</div>
                 <div className="text-xs text-gray-500">Registered</div>
-              </div>
-              <div>
-                <div className="text-lg font-bold text-green-600">{event.confirmedCount}</div>
-                <div className="text-xs text-gray-500">Confirmed</div>
               </div>
               <div>
                 <div className="text-lg font-bold text-purple-600">{fillRate}%</div>
@@ -519,12 +479,16 @@ export default function ParticipantsPage() {
               <CardContent className="space-y-2">
                 {events.length > 0 ? (
                   <>
-                    {events.slice(0, 3).map((event) => (
+                    {(showAllEvents ? events : events.slice(0, 3)).map((event) => (
                       <EventParticipants key={event.id} event={event} />
                     ))}
                     {events.length > 3 && (
-                      <Button variant="outline" className="w-full">
-                        View All Events ({events.length})
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setShowAllEvents(!showAllEvents)}
+                      >
+                        {showAllEvents ? 'Show Less' : `View All Events (${events.length})`}
                       </Button>
                     )}
                   </>
@@ -554,7 +518,7 @@ export default function ParticipantsPage() {
                         <span className="font-medium">{participant.name}</span> joined {participant.eventName}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formatDate(participant.registeredAt)}
+                        {formatRelativeTime(participant.registeredAt)}
                       </p>
                     </div>
                   </div>

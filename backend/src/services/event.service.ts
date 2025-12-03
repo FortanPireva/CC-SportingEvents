@@ -418,15 +418,6 @@ export class EventService {
     const registeredCount = event.participations.filter(
       (p) => p.status === 'REGISTERED'
     ).length;
-    const confirmedCount = event.participations.filter(
-      (p) => p.status === 'CONFIRMED'
-    ).length;
-    const waitlistedCount = event.participations.filter(
-      (p) => p.status === 'WAITLISTED'
-    ).length;
-    const cancelledCount = event.participations.filter(
-      (p) => p.status === 'CANCELLED'
-    ).length;
 
     const averageRating =
       event.feedback.length > 0
@@ -436,10 +427,7 @@ export class EventService {
     return {
       totalParticipants: event._count.participations,
       registeredCount,
-      confirmedCount,
-      waitlistedCount,
-      cancelledCount,
-      spotsRemaining: event.maxParticipants - confirmedCount - registeredCount,
+      spotsRemaining: event.maxParticipants - registeredCount,
       totalFeedback: event._count.feedback,
       averageRating: Math.round(averageRating * 10) / 10,
     };
@@ -475,28 +463,19 @@ export class EventService {
     });
 
     if (existingParticipation) {
-      if (existingParticipation.status === 'CANCELLED') {
-        // Re-register cancelled participation
-        const participation = await prisma.participation.update({
-          where: { id: existingParticipation.id },
-          data: {
-            status: event._count.participations >= event.maxParticipants ? 'WAITLISTED' : 'REGISTERED',
-            registeredAt: new Date(),
-          },
-        });
-        return participation;
-      }
       throw new Error('Already registered for this event');
     }
 
     // Check if event is full
-    const status = event._count.participations >= event.maxParticipants ? 'WAITLISTED' : 'REGISTERED';
+    if (event._count.participations >= event.maxParticipants) {
+      throw new Error('Event is full');
+    }
 
     const participation = await prisma.participation.create({
       data: {
         userId,
         eventId,
-        status,
+        status: 'REGISTERED',
       },
     });
 
@@ -504,7 +483,7 @@ export class EventService {
   }
 
   /**
-   * Leave an event (cancel participation)
+   * Leave an event (delete participation)
    */
   static async leaveEvent(userId: string, eventId: string) {
     const participation = await prisma.participation.findUnique({
@@ -517,63 +496,12 @@ export class EventService {
       throw new Error('Not registered for this event');
     }
 
-    if (participation.status === 'CANCELLED') {
-      throw new Error('Already cancelled participation');
-    }
-
-    const updatedParticipation = await prisma.participation.update({
+    // Delete the participation record
+    await prisma.participation.delete({
       where: { id: participation.id },
-      data: { status: 'CANCELLED' },
     });
 
-    // Check if there are waitlisted users to promote
-    const event = await prisma.event.findUnique({
-      where: { id: eventId },
-      include: {
-        _count: {
-          select: { participations: { where: { status: { in: ['REGISTERED', 'CONFIRMED'] } } } },
-        },
-      },
-    });
-
-    if (event) {
-      const activeParticipants = await prisma.participation.count({
-        where: {
-          eventId,
-          status: { in: ['REGISTERED', 'CONFIRMED'] },
-        },
-      });
-
-      if (activeParticipants < event.maxParticipants) {
-        // Promote first waitlisted user
-        const waitlistedUser = await prisma.participation.findFirst({
-          where: {
-            eventId,
-            status: 'WAITLISTED',
-          },
-          orderBy: { registeredAt: 'asc' },
-        });
-
-        if (waitlistedUser) {
-          await prisma.participation.update({
-            where: { id: waitlistedUser.id },
-            data: { status: 'REGISTERED' },
-          });
-
-          // Create notification for promoted user
-          await prisma.notification.create({
-            data: {
-              userId: waitlistedUser.userId,
-              eventId,
-              type: 'waitlist_promoted',
-              message: `You've been moved from the waitlist to registered for "${event.name}"!`,
-            },
-          });
-        }
-      }
-    }
-
-    return updatedParticipation;
+    return { success: true, message: 'Left event successfully' };
   }
 
   /**
@@ -587,7 +515,7 @@ export class EventService {
       prisma.participation.findMany({
         where: {
           userId,
-          status: { in: ['REGISTERED', 'CONFIRMED', 'WAITLISTED'] },
+          status: 'REGISTERED',
         },
         include: {
           event: {
@@ -618,7 +546,7 @@ export class EventService {
       prisma.participation.count({
         where: {
           userId,
-          status: { in: ['REGISTERED', 'CONFIRMED', 'WAITLISTED'] },
+          status: 'REGISTERED',
         },
       }),
     ]);
@@ -659,7 +587,7 @@ export class EventService {
       where: {
         userId,
         eventId: { in: eventIds },
-        status: { in: ['REGISTERED', 'CONFIRMED', 'WAITLISTED'] },
+        status: 'REGISTERED',
       },
     });
 
@@ -804,22 +732,7 @@ export class EventService {
       (sum, e) => sum + e._count.participations, 0
     );
 
-    // Calculate attendance rate for past events only
     const now = new Date();
-    const pastEvents = events.filter(e => new Date(e.date) < now);
-    
-    // Get participations from past events
-    const pastEventParticipations = pastEvents.flatMap(e => e.participations);
-    
-    // Expected attendees: those who registered, confirmed, or attended (excluding cancelled/waitlisted)
-    const expectedAttendees = pastEventParticipations.filter(
-      p => p.status === 'REGISTERED' || p.status === 'CONFIRMED' || p.status === 'ATTENDED'
-    ).length;
-    
-    // Actual attendees: those who actually attended
-    const actualAttendees = pastEventParticipations.filter(
-      p => p.status === 'ATTENDED'
-    ).length;
 
     const allFeedback = events.flatMap(e => e.feedback);
     const averageRating = allFeedback.length > 0
@@ -830,10 +743,8 @@ export class EventService {
       e => e.status === 'active' && new Date(e.date) >= now
     ).length;
 
-    // Attendance rate = actual attendees / expected attendees (for past events)
-    const attendanceRate = expectedAttendees > 0
-      ? Math.round((actualAttendees / expectedAttendees) * 100)
-      : 0;
+    // Attendance rate based on registered participants
+    const attendanceRate = totalParticipants > 0 ? 100 : 0;
 
     return {
       totalParticipants,
@@ -861,8 +772,8 @@ export class EventService {
     });
 
     return events.map(event => {
-      const confirmedCount = event.participations.filter(
-        p => p.status === 'CONFIRMED' || p.status === 'REGISTERED'
+      const registeredCount = event.participations.filter(
+        p => p.status === 'REGISTERED'
       ).length;
 
       return {
@@ -873,9 +784,157 @@ export class EventService {
         status: event.status,
         maxParticipants: event.maxParticipants,
         currentParticipants: event._count.participations,
-        confirmedCount,
+        registeredCount,
       };
     });
+  }
+
+  /**
+   * Submit feedback for an event
+   */
+  static async submitFeedback(userId: string, eventId: string, rating: number, comment: string) {
+    // Check if event exists
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    // Check if user participated in this event
+    const participation = await prisma.participation.findUnique({
+      where: {
+        userId_eventId: { userId, eventId },
+      },
+    });
+
+    if (!participation) {
+      throw new Error('You must participate in an event to leave feedback');
+    }
+
+    // Check if user already left feedback for this event
+    const existingFeedback = await prisma.feedback.findUnique({
+      where: {
+        userId_eventId: { userId, eventId },
+      },
+    });
+
+    if (existingFeedback) {
+      // Update existing feedback
+      const updatedFeedback = await prisma.feedback.update({
+        where: { id: existingFeedback.id },
+        data: { rating, comment },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+          event: {
+            select: { id: true, name: true },
+          },
+        },
+      });
+
+      return updatedFeedback;
+    }
+
+    // Create new feedback
+    const feedback = await prisma.feedback.create({
+      data: {
+        userId,
+        eventId,
+        rating,
+        comment,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+        event: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    return feedback;
+  }
+
+  /**
+   * Get user's feedback for an event
+   */
+  static async getUserFeedback(userId: string, eventId: string) {
+    const feedback = await prisma.feedback.findUnique({
+      where: {
+        userId_eventId: { userId, eventId },
+      },
+      include: {
+        event: {
+          select: { id: true, name: true, date: true, location: true },
+        },
+      },
+    });
+
+    return feedback;
+  }
+
+  /**
+   * Get all feedback for user's participated events
+   */
+  static async getUserEventFeedbackList(userId: string) {
+    // Get all events user participated in
+    const participations = await prisma.participation.findMany({
+      where: { userId, status: 'REGISTERED' },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+            date: true,
+            location: true,
+            sportType: true,
+            imageUrl: true,
+            organizer: {
+              include: {
+                user: {
+                  select: { name: true },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { registeredAt: 'desc' },
+    });
+
+    // Get existing feedback for these events
+    const eventIds = participations.map(p => p.eventId);
+    const feedbacks = await prisma.feedback.findMany({
+      where: {
+        userId,
+        eventId: { in: eventIds },
+      },
+    });
+
+    const feedbackMap = new Map(feedbacks.map(f => [f.eventId, f]));
+
+    // Map to response format
+    return participations.map(p => ({
+      eventId: p.event.id,
+      eventName: p.event.name,
+      eventDate: p.event.date,
+      eventLocation: p.event.location,
+      sportType: p.event.sportType,
+      imageUrl: p.event.imageUrl,
+      organizerName: p.event.organizer?.user?.name || 'Unknown',
+      registeredAt: p.registeredAt,
+      feedback: feedbackMap.get(p.eventId) ? {
+        id: feedbackMap.get(p.eventId)!.id,
+        rating: feedbackMap.get(p.eventId)!.rating,
+        comment: feedbackMap.get(p.eventId)!.comment,
+        createdAt: feedbackMap.get(p.eventId)!.createdAt,
+        updatedAt: feedbackMap.get(p.eventId)!.updatedAt,
+      } : null,
+    }));
   }
 
   /**

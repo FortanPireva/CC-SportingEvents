@@ -618,9 +618,7 @@ export class EventController {
 
       res.status(200).json({
         success: true,
-        message: participation.status === 'WAITLISTED' 
-          ? 'Added to waitlist successfully' 
-          : 'Joined event successfully',
+        message: 'Joined event successfully',
         data: { participation },
       });
     } catch (error: any) {
@@ -894,6 +892,136 @@ export class EventController {
       res.status(500).json({
         success: false,
         error: 'Failed to fetch participation status',
+      });
+    }
+  }
+
+  // Validation for feedback submission
+  static feedbackValidation = [
+    param('id').isUUID().withMessage('Invalid event ID'),
+    body('rating')
+      .isInt({ min: 1, max: 10 })
+      .withMessage('Rating must be between 1 and 10'),
+    body('comment')
+      .trim()
+      .notEmpty()
+      .withMessage('Comment is required')
+      .isLength({ max: 1000 })
+      .withMessage('Comment must be less than 1000 characters'),
+  ];
+
+  /**
+   * Submit feedback for an event
+   * POST /api/events/:id/feedback
+   */
+  static async submitFeedback(req: AuthRequest, res: Response) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          errors: errors.array(),
+        });
+      }
+
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const { id } = req.params;
+      const { rating, comment } = req.body;
+
+      const feedback = await EventService.submitFeedback(userId, id, rating, comment);
+
+      res.status(201).json({
+        success: true,
+        message: 'Feedback submitted successfully',
+        data: { feedback },
+      });
+    } catch (error: any) {
+      console.error('Submit feedback error:', error);
+
+      if (error.message === 'Event not found') {
+        return res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      if (error.message === 'You must participate in an event to leave feedback') {
+        return res.status(403).json({
+          success: false,
+          error: error.message,
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: 'Failed to submit feedback',
+      });
+    }
+  }
+
+  /**
+   * Get user's feedback for an event
+   * GET /api/events/:id/feedback
+   */
+  static async getUserFeedback(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const { id } = req.params;
+
+      const feedback = await EventService.getUserFeedback(userId, id);
+
+      res.status(200).json({
+        success: true,
+        data: { feedback },
+      });
+    } catch (error) {
+      console.error('Get user feedback error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch feedback',
+      });
+    }
+  }
+
+  /**
+   * Get all events user can provide feedback for
+   * GET /api/events/my-feedback-events
+   */
+  static async getMyFeedbackEvents(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+      }
+
+      const events = await EventService.getUserEventFeedbackList(userId);
+
+      res.status(200).json({
+        success: true,
+        data: { events },
+      });
+    } catch (error) {
+      console.error('Get feedback events error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch events',
       });
     }
   }

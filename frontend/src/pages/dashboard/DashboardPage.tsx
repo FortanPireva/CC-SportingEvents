@@ -113,7 +113,7 @@ export default function DashboardPage() {
           title: 'Average Rating', 
           value: stats.averageRating.toFixed(1), 
           icon: Star, 
-          trend: `${stats.ratingChangeThisMonth >= 0 ? '+' : ''}${stats.ratingChangeThisMonth.toFixed(1)} this month` 
+          trend: `From feedback (1-10)` 
         },
         { 
           title: 'Revenue Generated', 

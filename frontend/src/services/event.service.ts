@@ -16,7 +16,7 @@ export interface EventParticipant {
   userId: string;
   name: string;
   email: string;
-  status: 'REGISTERED' | 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED' | 'ATTENDED';
+  status: 'REGISTERED';
   registeredAt: string;
 }
 
@@ -92,16 +92,13 @@ export interface EventsResponse {
 export interface EventStatistics {
   totalParticipants: number;
   registeredCount: number;
-  confirmedCount: number;
-  waitlistedCount: number;
-  cancelledCount: number;
   spotsRemaining: number;
   totalFeedback: number;
   averageRating: number;
 }
 
 export interface EventWithParticipation extends Event {
-  participationStatus: 'REGISTERED' | 'CONFIRMED' | 'WAITLISTED';
+  participationStatus: 'REGISTERED';
   registeredAt: string;
 }
 
@@ -117,7 +114,7 @@ export interface ParticipatingEventsResponse {
 
 export interface Participation {
   id: string;
-  status: 'REGISTERED' | 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED';
+  status: 'REGISTERED';
   userId: string;
   eventId: string;
   registeredAt: string;
@@ -131,7 +128,7 @@ export interface EventParticipantDetail {
   email: string;
   location?: string;
   preferences?: string[];
-  status: 'REGISTERED' | 'CONFIRMED' | 'WAITLISTED' | 'CANCELLED' | 'ATTENDED';
+  status: 'REGISTERED';
   registeredAt: string;
   eventId: string;
   eventName: string;
@@ -167,7 +164,7 @@ export interface EventSummary {
   status: string;
   maxParticipants: number;
   currentParticipants: number;
-  confirmedCount: number;
+  registeredCount: number;
 }
 
 export interface ParticipantFilters {
@@ -176,6 +173,41 @@ export interface ParticipantFilters {
   search?: string;
   page?: number;
   limit?: number;
+}
+
+export interface Feedback {
+  id: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  event?: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface FeedbackEvent {
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  eventLocation: string;
+  sportType: string;
+  imageUrl?: string;
+  organizerName: string;
+  registeredAt: string;
+  feedback: {
+    id: string;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 }
 
 export const eventService = {
@@ -310,5 +342,26 @@ export const eventService = {
    */
   async getMyEventsSummary(): Promise<ApiResponse<{ events: EventSummary[] }>> {
     return api.get<{ events: EventSummary[] }>('/events/my-events-summary');
+  },
+
+  /**
+   * Submit feedback for an event (rating 1-10)
+   */
+  async submitFeedback(eventId: string, rating: number, comment: string): Promise<ApiResponse<{ feedback: Feedback }>> {
+    return api.post<{ feedback: Feedback }>(`/events/${eventId}/feedback`, { rating, comment });
+  },
+
+  /**
+   * Get user's feedback for a specific event
+   */
+  async getUserFeedback(eventId: string): Promise<ApiResponse<{ feedback: Feedback | null }>> {
+    return api.get<{ feedback: Feedback | null }>(`/events/${eventId}/feedback`);
+  },
+
+  /**
+   * Get all events user can provide feedback for
+   */
+  async getMyFeedbackEvents(): Promise<ApiResponse<{ events: FeedbackEvent[] }>> {
+    return api.get<{ events: FeedbackEvent[] }>('/events/my-feedback-events');
   },
 };

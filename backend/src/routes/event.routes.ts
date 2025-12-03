@@ -82,6 +82,17 @@ router.post(
 );
 
 /**
+ * @route   GET /api/events/my-feedback-events
+ * @desc    Get all events user can provide feedback for
+ * @access  Private
+ */
+router.get(
+  '/my-feedback-events',
+  authenticate,
+  EventController.getMyFeedbackEvents
+);
+
+/**
  * @route   GET /api/events/:id
  * @desc    Get event by ID
  * @access  Public
@@ -165,6 +176,29 @@ router.get(
   '/:id/statistics',
   authenticate,
   EventController.getStatistics
+);
+
+/**
+ * @route   POST /api/events/:id/feedback
+ * @desc    Submit feedback for an event (rating 1-10)
+ * @access  Private (Participants only)
+ */
+router.post(
+  '/:id/feedback',
+  authenticate,
+  EventController.feedbackValidation,
+  EventController.submitFeedback
+);
+
+/**
+ * @route   GET /api/events/:id/feedback
+ * @desc    Get user's feedback for an event
+ * @access  Private
+ */
+router.get(
+  '/:id/feedback',
+  authenticate,
+  EventController.getUserFeedback
 );
 
 export default router;

@@ -149,14 +149,14 @@ export class AnalyticsService {
     let revenueThisMonth = 0;
     for (const event of allEvents) {
       const price = (event.sponsorDetails as any)?.price || 0;
-      const confirmedParticipants = event.participations.filter(
-        (p) => p.status === ParticipationStatus.CONFIRMED || p.status === ParticipationStatus.ATTENDED
+      const registeredParticipants = event.participations.filter(
+        (p) => p.status === ParticipationStatus.REGISTERED
       ).length;
-      totalRevenue += price * confirmedParticipants;
+      totalRevenue += price * registeredParticipants;
 
       const monthParticipants = event.participations.filter(
         (p) =>
-          (p.status === ParticipationStatus.CONFIRMED || p.status === ParticipationStatus.ATTENDED) &&
+          p.status === ParticipationStatus.REGISTERED &&
           p.registeredAt >= startOfMonth
       ).length;
       revenueThisMonth += price * monthParticipants;
@@ -167,8 +167,8 @@ export class AnalyticsService {
       eventsCreatedThisMonth,
       totalParticipants,
       participantsThisWeek,
-      averageRating: Number((averageRating / 2).toFixed(1)), // Convert 1-10 to 1-5 scale
-      ratingChangeThisMonth: Number((ratingChangeThisMonth / 2).toFixed(1)),
+      averageRating: Number(averageRating.toFixed(1)), // Keep 1-10 scale
+      ratingChangeThisMonth: Number(ratingChangeThisMonth.toFixed(1)),
       totalRevenue,
       revenueThisMonth,
     };
@@ -230,7 +230,7 @@ export class AnalyticsService {
 
     // Events joined stats
     const activeParticipations = user.participations.filter(
-      (p) => p.status !== ParticipationStatus.CANCELLED
+      (p) => p.status === ParticipationStatus.REGISTERED
     );
     const eventsJoined = activeParticipations.length;
     const eventsJoinedThisMonth = activeParticipations.filter(
@@ -350,7 +350,7 @@ export class AnalyticsService {
         participations: {
           some: {
             userId,
-            status: { not: ParticipationStatus.CANCELLED },
+            status: ParticipationStatus.REGISTERED,
           },
         },
       },
@@ -415,7 +415,7 @@ export class AnalyticsService {
     const recentParticipations = await prisma.participation.findMany({
       where: {
         event: { organizerId },
-        status: { not: ParticipationStatus.CANCELLED },
+        status: ParticipationStatus.REGISTERED,
       },
       include: {
         user: {
@@ -484,7 +484,7 @@ export class AnalyticsService {
     const recentParticipations = await prisma.participation.findMany({
       where: {
         userId,
-        status: { not: ParticipationStatus.CANCELLED },
+        status: ParticipationStatus.REGISTERED,
       },
       include: {
         event: {
