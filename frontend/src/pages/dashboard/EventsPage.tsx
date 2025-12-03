@@ -16,7 +16,6 @@ import {
   MapPin, 
   Clock,
   Search,
-  Filter,
   Star,
   DollarSign,
   TrendingUp,
@@ -176,6 +175,14 @@ export default function EventsPage() {
     }
   };
 
+  // Check if an event has finished (past end time)
+  const isEventFinished = (event: Event): boolean => {
+    const eventDate = new Date(event.date);
+    const [endHours, endMinutes] = event.endTime.split(':').map(Number);
+    eventDate.setHours(endHours, endMinutes, 0, 0);
+    return new Date() > eventDate;
+  };
+
   // Map backend status to frontend status
   const mapStatus = (status: string): 'upcoming' | 'ongoing' | 'completed' | 'cancelled' => {
     switch (status) {
@@ -190,8 +197,18 @@ export default function EventsPage() {
     }
   };
 
-  const upcomingEvents = events.filter(event => mapStatus(event.status) === 'upcoming');
-  const pastEvents = events.filter(event => mapStatus(event.status) === 'completed');
+  // Filter events by whether they're upcoming or past
+  const upcomingEvents = events.filter(event => {
+    const status = mapStatus(event.status);
+    // Event is upcoming if it's not cancelled, not completed, and hasn't finished yet
+    return status !== 'cancelled' && status !== 'completed' && !isEventFinished(event);
+  });
+  
+  const pastEvents = events.filter(event => {
+    const status = mapStatus(event.status);
+    // Event is past if it's completed OR has finished (regardless of status)
+    return status === 'completed' || isEventFinished(event);
+  });
 
   const filterEvents = (eventsList: Event[]) => {
     return eventsList.filter(event => {
@@ -233,7 +250,11 @@ export default function EventsPage() {
 
   const EventCard = ({ event, showLeaveButton = false }: { event: Event | EventWithParticipation; showLeaveButton?: boolean }) => {
     const eventDate = new Date(event.date);
-    const status = mapStatus(event.status);
+    let status = mapStatus(event.status);
+    // Override status if event has finished
+    if (isEventFinished(event) && status !== 'cancelled') {
+      status = 'completed';
+    }
     const isJoined = participationStatus[event.id] !== undefined;
     const isJoining = joiningEventId === event.id;
     const isLeaving = leavingEventId === event.id;
@@ -262,7 +283,7 @@ export default function EventsPage() {
               </Badge>
             )}
             <Badge variant={status === 'upcoming' ? 'default' : 'secondary'}>
-              {status}
+              {`${status.charAt(0).toUpperCase() + status.slice(1)}`}
             </Badge>
           </div>
         </div>
@@ -324,7 +345,7 @@ export default function EventsPage() {
               </div>
               {event.skillLevel && (
                 <Badge variant="secondary" className="text-xs">
-                  {event.skillLevel}
+                  {event.skillLevel.charAt(0).toUpperCase() + event.skillLevel.slice(1)}
                 </Badge>
               )}
             </div>
@@ -338,19 +359,7 @@ export default function EventsPage() {
                 ))}
               </div>
             )}
-            
-            <div className="flex items-center justify-between pt-3 border-t">
-              <div className="flex items-center space-x-2">
-                <Button variant="ghost" size="sm">
-                  <Heart className="h-4 w-4 mr-1" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4 mr-1" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </div>
+<div className="flex items-center justify-between pt-3 border-t">
               {status === 'upcoming' && (
                 isJoined || showLeaveButton ? (
                   <Button 
@@ -379,11 +388,6 @@ export default function EventsPage() {
                     {isFull ? 'Event Full' : 'Join Event'}
                   </Button>
                 )
-              )}
-              {status !== 'upcoming' && (
-                <Button size="sm" variant="outline">
-                  View Details
-                </Button>
               )}
             </div>
           </div>
@@ -498,11 +502,6 @@ export default function EventsPage() {
                   <SelectItem value="price">Price</SelectItem>
                 </SelectContent>
               </Select>
-              
-              <Button variant="outline" className="w-full">
-                <Filter className="h-4 w-4 mr-2" />
-                More Filters
-              </Button>
             </div>
           </CardContent>
         </Card>
