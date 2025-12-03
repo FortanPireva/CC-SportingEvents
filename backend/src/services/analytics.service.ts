@@ -419,7 +419,7 @@ export class AnalyticsService {
       },
       include: {
         user: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, avatar: true },
         },
         event: {
           select: { id: true, name: true },
@@ -435,6 +435,7 @@ export class AnalyticsService {
         type: 'event_joined',
         message: `joined ${p.event.name}`,
         userName: p.user.name,
+        userAvatar: p.user.avatar || undefined,
         timestamp: p.registeredAt,
       });
     }
@@ -446,7 +447,7 @@ export class AnalyticsService {
       },
       include: {
         user: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, avatar: true },
         },
         event: {
           select: { name: true },
@@ -462,6 +463,7 @@ export class AnalyticsService {
         type: 'review_received',
         message: `left a ${f.rating > 7 ? '5' : f.rating > 4 ? '4' : '3'}-star review`,
         userName: f.user.name,
+        userAvatar: f.user.avatar || undefined,
         timestamp: f.createdAt,
       });
     }

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Users, Search, Mail, MapPin, Calendar, Star, TrendingUp, MessageCircle, Download, CircleCheck as CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -208,6 +208,7 @@ export default function ParticipantsPage() {
       <CardContent className="p-6">
         <div className="flex items-start space-x-4">
           <Avatar className="h-12 w-12">
+            <AvatarImage src={participant.avatar} alt={participant.name} />
             <AvatarFallback>
               {participant.name.split(' ').map((n: string) => n[0]).join('')}
             </AvatarFallback>
@@ -509,6 +510,7 @@ export default function ParticipantsPage() {
                 {participants.slice(0, 5).map((participant) => (
                   <div key={participant.id} className="flex items-start space-x-3">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={participant.avatar} alt={participant.name} />
                       <AvatarFallback className="text-xs">
                         {participant.name.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>

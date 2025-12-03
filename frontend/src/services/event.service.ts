@@ -126,6 +126,7 @@ export interface EventParticipantDetail {
   userId: string;
   name: string;
   email: string;
+  avatar?: string;
   location?: string;
   preferences?: string[];
   status: 'REGISTERED';
