@@ -344,17 +344,6 @@ export default function ParticipantsPage() {
                 ></div>
               </div>
             </div>
-            
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm" className="flex-1 text-xs">
-                <UserPlus className="h-3 w-3 mr-1" />
-                Invite
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 text-xs">
-                <Send className="h-3 w-3 mr-1" />
-                Message
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -453,20 +442,6 @@ export default function ParticipantsPage() {
                     </SelectContent>
                   </Select>
                   
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="REGISTERED">Registered</SelectItem>
-                      <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                      <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
-                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                      <SelectItem value="ATTENDED">Attended</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
                   <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sort By" />
@@ -477,11 +452,6 @@ export default function ParticipantsPage() {
                       <SelectItem value="date">Join Date</SelectItem>
                     </SelectContent>
                   </Select>
-                  
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    More Filters
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -563,31 +533,6 @@ export default function ParticipantsPage() {
                     No events yet
                   </p>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Announcement
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={exportToExcel} disabled={participants.length === 0}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export List
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Award className="h-4 w-4 mr-2" />
-                  Send Certificates
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Bulk Invite
-                </Button>
               </CardContent>
             </Card>
 
