@@ -20,10 +20,6 @@ enum UserRole {
 
 enum ParticipationStatus {
   REGISTERED
-  CONFIRMED
-  WAITLISTED
-  CANCELLED
-  ATTENDED
 }
 
 enum SportType {
@@ -67,6 +63,10 @@ model User {
   bookmarkedEvents  EventBookmark[]
   feedback          Feedback[]
   passwordResetTokens PasswordResetToken[]
+  communityPosts    CommunityPost[] @relation("CommunityPosts")
+  postComments      PostComment[]   @relation("PostComments")
+  postLikes         PostLike[]      @relation("PostLikes")
+  commentLikes      CommentLike[]   @relation("CommentLikes")
   
   @@index([email])
 }
@@ -214,5 +214,81 @@ model PasswordResetToken {
   @@index([otpCode])
   @@index([userId])
   @@index([userId, otpCode])
+}
+
+enum PostType {
+  DISCUSSION
+  ACHIEVEMENT
+  QUESTION
+  EVENT_SHARE
+}
+
+model CommunityPost {
+  id          String            @id @default(uuid())
+  content     String            @db.Text
+  type        PostType          @default(DISCUSSION)
+  authorId    String
+  likes       Int               @default(0)
+  tags        String[]
+  imageUrl    String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  // Relations
+  author      User              @relation("CommunityPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  comments    PostComment[]
+  postLikes   PostLike[]
+  
+  @@index([authorId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model PostComment {
+  id          String       @id @default(uuid())
+  content     String       @db.Text
+  authorId    String
+  postId      String
+  likes       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relations
+  author      User         @relation("PostComments", fields: [authorId], references: [id], onDelete: Cascade)
+  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentLikes CommentLike[]
+  
+  @@index([authorId])
+  @@index([postId])
+}
+
+model PostLike {
+  id        String         @id @default(uuid())
+  userId    String
+  postId    String
+  createdAt DateTime       @default(now())
+  
+  // Relations
+  user      User           @relation("PostLikes", fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
+}
+
+model CommentLike {
+  id        String      @id @default(uuid())
+  userId    String
+  commentId String
+  createdAt DateTime    @default(now())
+  
+  // Relations
+  user      User        @relation("CommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+  comment   PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([commentId])
 }
 

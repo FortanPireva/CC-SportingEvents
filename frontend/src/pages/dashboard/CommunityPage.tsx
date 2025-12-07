@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,47 +11,412 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, MessageCircle, Heart, Share2, TrendingUp, Award, Calendar, MapPin, Plus, Search, Filter, ThumbsUp, Reply, MoveHorizontal as MoreHorizontal, UserPlus, Star, Activity } from 'lucide-react';
-import { mockCommunityPosts, mockUsers } from '@/lib/mockData';
-import { CommunityPost, User } from '@/lib/mockData';
+import { Users, MessageCircle, Heart, Share2, TrendingUp, Award, Calendar, MapPin, Plus, Search, Filter, ThumbsUp, Reply, MoveHorizontal as MoreHorizontal, UserPlus, Star, Activity, Loader2 } from 'lucide-react';
+import { 
+  communityService, 
+  CommunityPost, 
+  ActiveMember, 
+  TrendingTopic,
+  PostType,
+  SortBy,
+  CommunityStats,
+  CreatePostDto
+} from '@/services/community.service';
+import { useToast } from '@/hooks/use-toast';
 
 export default function CommunityPage() {
+  const { toast } = useToast();
+  
+  // State
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('recent');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | PostType>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('recent');
   const [newPostContent, setNewPostContent] = useState('');
-  const [newPostType, setNewPostType] = useState<'discussion' | 'achievement' | 'question' | 'event-share'>('discussion');
+  const [newPostType, setNewPostType] = useState<PostType>('discussion');
+  const [newPostTags, setNewPostTags] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Data state
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [stats, setStats] = useState<CommunityStats | null>(null);
+  const [activeMembers, setActiveMembers] = useState<ActiveMember[]>([]);
+  const [trendingTopics, setTrendingTopics] = useState<TrendingTopic[]>([]);
+  
+  // Loading states
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+  const [isLoadingTopics, setIsLoadingTopics] = useState(true);
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
+  
+  // Comment/Reply states
+  const [showCommentInput, setShowCommentInput] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [showReplyInput, setShowReplyInput] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
 
-  const filterPosts = (posts: CommunityPost[]) => {
-    return posts.filter(post => {
-      const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           post.author.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesFilter = selectedFilter === 'all' || post.type === selectedFilter;
+  // Fetch posts
+  const fetchPosts = async () => {
+    try {
+      setIsLoadingPosts(true);
+      const response = await communityService.getPosts({
+        type: selectedFilter === 'all' ? undefined : selectedFilter,
+        search: searchTerm || undefined,
+        sortBy,
+      });
       
-      return matchesSearch && matchesFilter;
-    }).sort((a, b) => {
-      switch (sortBy) {
-        case 'recent':
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        case 'popular':
-          return b.likes - a.likes;
-        case 'discussed':
-          return b.comments.length - a.comments.length;
-        default:
-          return 0;
+      if (response.data) {
+        setPosts(response.data);
       }
-    });
+    } catch (error: any) {
+      console.error('Error fetching posts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load posts. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingPosts(false);
+    }
   };
 
-  const filteredPosts = filterPosts(mockCommunityPosts);
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      setIsLoadingStats(true);
+      const response = await communityService.getCommunityStats();
+      if (response.data) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
 
-  const stats = [
-    { title: 'Community Members', value: '1,247', icon: Users, trend: '+89 this month' },
-    { title: 'Active Discussions', value: '156', icon: MessageCircle, trend: '+23 this week' },
-    { title: 'Events Shared', value: '89', icon: Calendar, trend: '+12 today' },
-    { title: 'Achievements', value: '234', icon: Award, trend: '+45 this month' }
-  ];
+  // Fetch active members
+  const fetchActiveMembers = async () => {
+    try {
+      setIsLoadingMembers(true);
+      const response = await communityService.getActiveMembers(4);
+      if (response.data) {
+        setActiveMembers(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching members:', error);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  // Fetch trending topics
+  const fetchTrendingTopics = async () => {
+    try {
+      setIsLoadingTopics(true);
+      const response = await communityService.getTrendingTopics(5);
+      if (response.data) {
+        setTrendingTopics(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching topics:', error);
+    } finally {
+      setIsLoadingTopics(false);
+    }
+  };
+
+  // Create post
+  const handleCreatePost = async () => {
+    if (!newPostContent.trim() || !newPostTags.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please provide content and at least one tag.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsCreatingPost(true);
+      const tags = newPostTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      await communityService.createPost({
+        content: newPostContent,
+        type: newPostType,
+        tags,
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Post created successfully!',
+      });
+
+      setNewPostContent('');
+      setNewPostTags('');
+      setNewPostType('discussion');
+      setIsDialogOpen(false);
+      
+      // Refresh posts
+      fetchPosts();
+      fetchStats();
+      fetchTrendingTopics();
+    } catch (error: any) {
+      console.error('Error creating post:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create post. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingPost(false);
+    }
+  };
+
+  // Toggle post like
+  const handleTogglePostLike = async (postId: string) => {
+    try {
+      const response = await communityService.togglePostLike(postId);
+      
+      // Update local state
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? { ...post, likes: response.data.liked ? post.likes + 1 : post.likes - 1 }
+            : post
+        )
+      );
+    } catch (error: any) {
+      console.error('Error toggling like:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update like. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Toggle comment input visibility
+  const handleToggleCommentInput = (postId: string) => {
+    if (showCommentInput === postId) {
+      setShowCommentInput(null);
+    } else {
+      setShowCommentInput(postId);
+    }
+  };
+
+  // Submit comment
+  const handleSubmitComment = async (postId: string) => {
+    const content = commentText[postId]?.trim();
+    
+    if (!content) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a comment.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingComment(true);
+      const response = await communityService.createComment({
+        postId,
+        content,
+      });
+
+      // Update local state with new comment
+      setPosts(prevPosts =>
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [response.data, ...post.comments],
+              _count: {
+                ...post._count,
+                comments: (post._count?.comments || post.comments.length) + 1,
+              },
+            };
+          }
+          return post;
+        })
+      );
+
+      // Clear comment text and hide input
+      setCommentText(prev => ({ ...prev, [postId]: '' }));
+      setShowCommentInput(null);
+
+      toast({
+        title: 'Success',
+        description: 'Comment posted successfully!',
+      });
+    } catch (error: any) {
+      console.error('Error submitting comment:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to post comment. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  // Handle share functionality
+  const handleShare = async (postId: string, postContent: string) => {
+    try {
+      // Create a shareable link (you can customize this based on your routing)
+      const shareUrl = `${window.location.origin}/community/post/${postId}`;
+      
+      // Try to use native share API if available
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Community Post',
+          text: postContent.substring(0, 100) + '...',
+          url: shareUrl,
+        });
+        toast({
+          title: 'Success',
+          description: 'Post shared successfully!',
+        });
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        toast({
+          title: 'Link Copied',
+          description: 'Post link copied to clipboard!',
+        });
+      }
+    } catch (error: any) {
+      // If user cancels share or clipboard fails
+      if (error.name !== 'AbortError') {
+        console.error('Error sharing:', error);
+        toast({
+          title: 'Info',
+          description: 'Share cancelled or unavailable.',
+        });
+      }
+    }
+  };
+
+  // Toggle comment like
+  const handleToggleCommentLike = async (commentId: string, postId: string) => {
+    try {
+      const response = await communityService.toggleCommentLike(commentId);
+      
+      // Update local state
+      setPosts(prevPosts =>
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: post.comments.map(comment =>
+                comment.id === commentId
+                  ? { ...comment, likes: response.data.liked ? comment.likes + 1 : comment.likes - 1 }
+                  : comment
+              ),
+            };
+          }
+          return post;
+        })
+      );
+    } catch (error: any) {
+      console.error('Error toggling comment like:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update like. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Toggle reply input for comments
+  const handleToggleReplyInput = (commentId: string) => {
+    if (showReplyInput === commentId) {
+      setShowReplyInput(null);
+    } else {
+      setShowReplyInput(commentId);
+    }
+  };
+
+  // Submit reply to comment (using same comment creation endpoint)
+  const handleSubmitReply = async (postId: string, commentId: string) => {
+    const content = replyText[commentId]?.trim();
+    
+    if (!content) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a reply.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingComment(true);
+      const response = await communityService.createComment({
+        postId,
+        content: content,
+      });
+
+      // Update local state with new comment
+      setPosts(prevPosts =>
+        prevPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              comments: [response.data, ...post.comments],
+              _count: {
+                ...post._count,
+                comments: (post._count?.comments || post.comments.length) + 1,
+              },
+            };
+          }
+          return post;
+        })
+      );
+
+      // Clear reply text and hide input
+      setReplyText(prev => ({ ...prev, [commentId]: '' }));
+      setShowReplyInput(null);
+
+      toast({
+        title: 'Success',
+        description: 'Reply posted successfully!',
+      });
+    } catch (error: any) {
+      console.error('Error submitting reply:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to post reply. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchPosts();
+    fetchStats();
+    fetchActiveMembers();
+    fetchTrendingTopics();
+  }, []);
+
+  // Refetch posts when filters change
+  useEffect(() => {
+    fetchPosts();
+  }, [selectedFilter, sortBy, searchTerm]);
+
+  const statsArray = stats
+    ? [
+        { title: 'Community Members', value: stats.members.total.toString(), icon: Users, trend: stats.members.trend },
+        { title: 'Active Discussions', value: stats.discussions.total.toString(), icon: MessageCircle, trend: stats.discussions.trend },
+        { title: 'Events Shared', value: stats.events.total.toString(), icon: Calendar, trend: stats.events.trend },
+        { title: 'Achievements', value: stats.achievements.total.toString(), icon: Award, trend: stats.achievements.trend },
+      ]
+    : [];
 
   const getPostTypeColor = (type: string) => {
     const colors = {
@@ -100,11 +465,11 @@ export default function CommunityPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2">
                 <h4 className="font-medium text-gray-900">{post.author.name}</h4>
-                <Badge variant="secondary" className="text-xs">
-                  {post.author.type}
+                <Badge variant="secondary" className="text-xs capitalize">
+                  {post.author.role.toLowerCase()}
                 </Badge>
                 <span className="text-sm text-gray-500">•</span>
-                <span className="text-sm text-gray-500">{formatTimeAgo(post.timestamp)}</span>
+                <span className="text-sm text-gray-500">{formatTimeAgo(new Date(post.createdAt))}</span>
               </div>
               <div className="flex items-center space-x-2 mt-1">
                 <Badge className={`text-xs ${getPostTypeColor(post.type)}`}>
@@ -128,10 +493,10 @@ export default function CommunityPage() {
           <div className="space-y-4">
             <p className="text-gray-700 leading-relaxed">{post.content}</p>
             
-            {post.image && (
+            {post.imageUrl && (
               <div className="rounded-lg overflow-hidden">
                 <img 
-                  src={post.image} 
+                  src={post.imageUrl} 
                   alt="Post image"
                   className="w-full h-48 object-cover"
                 />
@@ -140,56 +505,163 @@ export default function CommunityPage() {
             
             <div className="flex items-center justify-between pt-3 border-t">
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" className="text-gray-600 hover:text-red-600">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-gray-600 hover:text-red-600"
+                  onClick={() => handleTogglePostLike(post.id)}
+                >
                   <Heart className="h-4 w-4 mr-1" />
                   {post.likes}
                 </Button>
-                <Button variant="ghost" size="sm" className="text-gray-600">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-gray-600 hover:text-blue-600"
+                  onClick={() => handleToggleCommentInput(post.id)}
+                >
                   <MessageCircle className="h-4 w-4 mr-1" />
-                  {post.comments.length}
+                  {post._count?.comments || post.comments.length}
                 </Button>
-                <Button variant="ghost" size="sm" className="text-gray-600">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-gray-600 hover:text-green-600"
+                  onClick={() => handleShare(post.id, post.content)}
+                >
                   <Share2 className="h-4 w-4 mr-1" />
                   Share
                 </Button>
               </div>
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => handleToggleCommentInput(post.id)}
+              >
                 <Reply className="h-4 w-4 mr-1" />
                 Reply
               </Button>
             </div>
             
+            {/* Comment Input Section */}
+            {showCommentInput === post.id && (
+              <div className="pt-4 border-t mt-4">
+                <div className="flex space-x-3">
+                  <Textarea
+                    placeholder="Write a comment..."
+                    value={commentText[post.id] || ''}
+                    onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
+                    rows={2}
+                    className="flex-1"
+                  />
+                </div>
+                <div className="flex justify-end space-x-2 mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowCommentInput(null)}
+                    disabled={isSubmittingComment}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={() => handleSubmitComment(post.id)}
+                    disabled={isSubmittingComment || !commentText[post.id]?.trim()}
+                  >
+                    {isSubmittingComment ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      'Post Comment'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+            
             {post.comments.length > 0 && (
               <div className="space-y-3 pt-3 border-t bg-gray-50 -mx-6 px-6 py-4">
                 {post.comments.slice(0, 2).map((comment) => (
-                  <div key={comment.id} className="flex items-start space-x-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
-                      <AvatarFallback className="text-xs">
-                        {comment.author.name.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-sm">{comment.author.name}</span>
-                        <span className="text-xs text-gray-500">{formatTimeAgo(comment.timestamp)}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Button variant="ghost" size="sm" className="text-xs h-6 px-2">
-                          <ThumbsUp className="h-3 w-3 mr-1" />
-                          {comment.likes}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-xs h-6 px-2">
-                          Reply
-                        </Button>
+                  <div key={comment.id}>
+                    <div className="flex items-start space-x-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
+                        <AvatarFallback className="text-xs">
+                          {comment.author.name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-sm">{comment.author.name}</span>
+                          <span className="text-xs text-gray-500">{formatTimeAgo(new Date(comment.createdAt))}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs h-6 px-2 hover:text-red-600"
+                            onClick={() => handleToggleCommentLike(comment.id, post.id)}
+                          >
+                            <ThumbsUp className="h-3 w-3 mr-1" />
+                            {comment.likes}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs h-6 px-2 hover:text-blue-600"
+                            onClick={() => handleToggleReplyInput(comment.id)}
+                          >
+                            Reply
+                          </Button>
+                        </div>
+                        
+                        {/* Reply Input for Comment */}
+                        {showReplyInput === comment.id && (
+                          <div className="mt-3 ml-4">
+                            <Textarea
+                              placeholder="Write a reply..."
+                              value={replyText[comment.id] || ''}
+                              onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
+                              rows={2}
+                              className="text-sm"
+                            />
+                            <div className="flex justify-end space-x-2 mt-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setShowReplyInput(null)}
+                                disabled={isSubmittingComment}
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => handleSubmitReply(post.id, comment.id)}
+                                disabled={isSubmittingComment || !replyText[comment.id]?.trim()}
+                              >
+                                {isSubmittingComment ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                    Posting...
+                                  </>
+                                ) : (
+                                  'Reply'
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
                 {post.comments.length > 2 && (
                   <Button variant="ghost" size="sm" className="text-primary">
-                    View all {post.comments.length} comments
+                    View all {post._count?.comments || post.comments.length} comments
                   </Button>
                 )}
               </div>
@@ -200,39 +672,46 @@ export default function CommunityPage() {
     );
   };
 
-  const MemberCard = ({ user }: { user: User }) => (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-center space-x-3">
-          <Avatar className="h-12 w-12">
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback>
-              {user.name.split(' ').map(n => n[0]).join('')}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-gray-900 truncate">{user.name}</h4>
-            <p className="text-sm text-gray-500 capitalize">{user.type}</p>
-            <p className="text-xs text-gray-400">{user.location}</p>
+  const MemberCard = ({ user }: { user: ActiveMember }) => {
+    const preferences = user.preferences ? 
+      (Array.isArray(user.preferences) ? user.preferences : []) : [];
+    
+    return (
+      <Card className="hover:shadow-md transition-shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={user.avatar} alt={user.name} />
+              <AvatarFallback>
+                {user.name.split(' ').map(n => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-gray-900 truncate">{user.name}</h4>
+              <p className="text-sm text-gray-500 capitalize">{user.role.toLowerCase()}</p>
+              {user.location && <p className="text-xs text-gray-400">{user.location}</p>}
+            </div>
+            <Button size="sm" variant="outline">
+              <UserPlus className="h-4 w-4 mr-1" />
+              Connect
+            </Button>
           </div>
-          <Button size="sm" variant="outline">
-            <UserPlus className="h-4 w-4 mr-1" />
-            Connect
-          </Button>
-        </div>
-        <div className="mt-3">
-          <div className="text-xs text-gray-500 mb-2">Interests</div>
-          <div className="flex flex-wrap gap-1">
-            {user.preferences?.slice(0, 3).map((sport, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
-                {sport}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+          {preferences.length > 0 && (
+            <div className="mt-3">
+              <div className="text-xs text-gray-500 mb-2">Interests</div>
+              <div className="flex flex-wrap gap-1">
+                {preferences.slice(0, 3).map((sport: string, index: number) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {sport}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -245,7 +724,7 @@ export default function CommunityPage() {
               Connect, share, and engage with fellow sports enthusiasts
             </p>
           </div>
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="mt-4 md:mt-0">
                 <Plus className="h-4 w-4 mr-2" />
@@ -260,7 +739,7 @@ export default function CommunityPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <Select value={newPostType} onValueChange={(value: any) => setNewPostType(value)}>
+                <Select value={newPostType} onValueChange={(value: PostType) => setNewPostType(value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Post Type" />
                   </SelectTrigger>
@@ -277,9 +756,32 @@ export default function CommunityPage() {
                   onChange={(e) => setNewPostContent(e.target.value)}
                   rows={4}
                 />
+                <Input
+                  placeholder="Tags (comma-separated, e.g., basketball, community, running)"
+                  value={newPostTags}
+                  onChange={(e) => setNewPostTags(e.target.value)}
+                />
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline">Cancel</Button>
-                  <Button>Post</Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                    disabled={isCreatingPost}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleCreatePost}
+                    disabled={isCreatingPost}
+                  >
+                    {isCreatingPost ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      'Post'
+                    )}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
@@ -288,23 +790,38 @@ export default function CommunityPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <Card key={index}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground flex items-center">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  {stat.trend}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+          {isLoadingStats ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <Card key={index}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+                </CardHeader>
+                <CardContent>
+                  <div className="h-8 w-20 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            statsArray.map((stat, index) => (
+              <Card key={index}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {stat.title}
+                  </CardTitle>
+                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground flex items-center">
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                    {stat.trend}
+                  </p>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
 
         {/* Main Content */}
@@ -359,8 +876,28 @@ export default function CommunityPage() {
 
             {/* Posts */}
             <div className="space-y-6">
-              {filteredPosts.length > 0 ? (
-                filteredPosts.map((post) => (
+              {isLoadingPosts ? (
+                Array.from({ length: 3 }).map((_, index) => (
+                  <Card key={index}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start space-x-3">
+                        <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                          <div className="h-3 w-48 bg-gray-200 rounded animate-pulse" />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
+                        <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : posts.length > 0 ? (
+                posts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))
               ) : (
@@ -371,7 +908,7 @@ export default function CommunityPage() {
                     <p className="text-gray-600 text-center mb-4">
                       Try adjusting your filters or be the first to start a conversation!
                     </p>
-                    <Button>Create Post</Button>
+                    <Button onClick={() => setIsDialogOpen(true)}>Create Post</Button>
                   </CardContent>
                 </Card>
               )}
@@ -387,12 +924,34 @@ export default function CommunityPage() {
                 <CardDescription>Connect with fellow sports enthusiasts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockUsers.slice(0, 4).map((user) => (
-                  <MemberCard key={user.id} user={user} />
-                ))}
-                <Button variant="outline" className="w-full">
-                  View All Members
-                </Button>
+                {isLoadingMembers ? (
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <Card key={index}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="h-12 w-12 bg-gray-200 rounded-full animate-pulse" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                            <div className="h-3 w-16 bg-gray-200 rounded animate-pulse" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : activeMembers.length > 0 ? (
+                  <>
+                    {activeMembers.map((user) => (
+                      <MemberCard key={user.id} user={user} />
+                    ))}
+                    <Button variant="outline" className="w-full">
+                      View All Members
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No active members to display
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -402,21 +961,28 @@ export default function CommunityPage() {
                 <CardTitle className="text-lg">Trending Topics</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {[
-                  { tag: 'basketball', posts: 23 },
-                  { tag: 'community', posts: 18 },
-                  { tag: 'running', posts: 15 },
-                  { tag: 'yoga', posts: 12 },
-                  { tag: 'tournament', posts: 9 }
-                ].map((topic, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span className="text-sm font-medium">#{topic.tag}</span>
+                {isLoadingTopics ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-3 w-12 bg-gray-200 rounded animate-pulse" />
                     </div>
-                    <span className="text-xs text-gray-500">{topic.posts} posts</span>
-                  </div>
-                ))}
+                  ))
+                ) : trendingTopics.length > 0 ? (
+                  trendingTopics.map((topic, index) => (
+                    <div key={index} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-primary rounded-full"></div>
+                        <span className="text-sm font-medium">#{topic.tag}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">{topic.posts} posts</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No trending topics yet
+                  </p>
+                )}
               </CardContent>
             </Card>
 

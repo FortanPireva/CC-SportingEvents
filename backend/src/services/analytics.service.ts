@@ -459,7 +459,7 @@ export class AnalyticsService {
       activities.push({
         id: f.id,
         type: 'review_received',
-        message: `left a ${f.rating > 7 ? '5' : f.rating > 4 ? '4' : '3'}-star review`,
+        message: `left a ${f.rating}-star review`,
         userName: f.user.name,
         userAvatar: f.user.avatar || undefined,
         timestamp: f.createdAt,

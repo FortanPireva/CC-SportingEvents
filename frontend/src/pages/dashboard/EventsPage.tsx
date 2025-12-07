@@ -23,7 +23,8 @@ import {
   Heart,
   Share2,
   Loader2,
-  Plus
+  Plus,
+  Activity
 } from 'lucide-react';
 import { eventService, Event, EventWithParticipation } from '@/services/event.service';
 import { toast } from 'sonner';
@@ -237,11 +238,11 @@ export default function EventsPage() {
   const filteredPastEvents = filterEvents(pastEvents);
 
   const stats = [
-    { title: 'Total Events', value: events.length.toString(), icon: Calendar, trend: `${upcomingEvents.length} upcoming` },
-    ...(user ? [{ title: 'My Joined Events', value: joinedEvents.length.toString(), icon: Users, trend: 'Events you\'re attending' }] : []),
-    { title: 'Active Participants', value: events.reduce((sum, e) => sum + e.currentParticipants, 0).toString(), icon: Users, trend: 'Across all events' },
-    { title: 'Sports Available', value: [...new Set(events.map(e => e.sportType))].length.toString(), icon: Star, trend: 'Different sports' },
-    ...(user ? [] : [{ title: 'Avg. Price', value: events.length > 0 ? `$${(events.filter(e => e.price).reduce((sum, e) => sum + (e.price || 0), 0) / (events.filter(e => e.price).length || 1)).toFixed(2)}` : '$0', icon: DollarSign, trend: 'Per event' }])
+    { title: 'Total Events', value: events.length.toString(), icon: Calendar, trend: `${upcomingEvents.length} upcoming`, color: 'text-purple-600' },
+    ...(user ? [{ title: 'My Joined Events', value: joinedEvents.length.toString(), icon: Activity , trend: 'Events you\'re attending', color: 'text-green-600' }] : []),
+    { title: 'Active Participants', value: events.reduce((sum, e) => sum + e.currentParticipants, 0).toString(), icon: Users, trend: 'Across all events', color: 'text-black-600' },
+    { title: 'Sports Available', value: [...new Set(events.map(e => e.sportType))].length.toString(), icon: Star, trend: 'Different sports', color: 'text-blue-600' },
+    ...(user ? [] : [{ title: 'Avg. Price', value: events.length > 0 ? `$${(events.filter(e => e.price).reduce((sum, e) => sum + (e.price || 0), 0) / (events.filter(e => e.price).length || 1)).toFixed(2)}` : '$0', icon: DollarSign, trend: 'Per event', color: 'text-green-600' }])
   ];
 
   // Get unique sports from events
@@ -436,12 +437,12 @@ export default function EventsPage() {
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                <stat.icon className={"h-4 w-4 " + stat.color} />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>
                 <p className="text-xs text-muted-foreground flex items-center">
-                  <TrendingUp className="h-3 w-3 mr-1" />
+                  <TrendingUp className={"h-3 w-3 mr-1 "} />
                   {stat.trend}
                 </p>
               </CardContent>
