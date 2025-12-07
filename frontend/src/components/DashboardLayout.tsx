@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Logo */}
           <div className="flex items-center flex-shrink-0 px-4 py-6">
             <Activity className="h-8 w-8 text-primary" />
-            <span className="ml-2 text-xl font-bold text-gray-900">CC Sporting Events</span>
+            <span className="ml-2 text-xl font-bold text-gray-900">CC: Sporting Events</span>
           </div>
 
           {/* Navigation */}
