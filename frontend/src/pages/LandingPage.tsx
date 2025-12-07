@@ -62,7 +62,7 @@ export default function LandingPage() {
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Activity className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-gray-900">CC: Sporting Events</span>
+            <span className="text-2xl font-bold text-blue-900">CC: Sporting Events</span>
           </div>
           <div className="space-x-4">
             <Link to="/auth/signin">

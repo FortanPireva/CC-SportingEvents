@@ -19,9 +19,6 @@ import {
   Star,
   DollarSign,
   TrendingUp,
-  Eye,
-  Heart,
-  Share2,
   Loader2,
   Plus,
   Activity
@@ -277,10 +274,15 @@ export default function EventsPage() {
               <Calendar className="h-16 w-16 text-primary/40" />
             </div>
           )}
-          <div className="absolute top-4 right-4 flex gap-2">
+          <div className="absolute top-4 right-4 flex flex-wrap gap-2 justify-end">
             {isJoined && (
               <Badge variant="default" className="bg-green-500">
                 Registered
+              </Badge>
+            )}
+            {event.isRecurring && (
+              <Badge variant="default" className="bg-purple-500">
+                🔁 {event.recurringPattern ? event.recurringPattern.charAt(0).toUpperCase() + event.recurringPattern.slice(1) : 'Recurring'}
               </Badge>
             )}
             <Badge variant={status === 'upcoming' ? 'default' : 'secondary'}>
