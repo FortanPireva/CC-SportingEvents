@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, MessageCircle, Heart, Share2, TrendingUp, Award, Calendar, MapPin, Plus, Search, Filter, ThumbsUp, Reply, MoveHorizontal as MoreHorizontal, UserPlus, Star, Activity, Loader2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Users, MessageCircle, Heart, TrendingUp, Award, Calendar, Plus, Search, ThumbsUp, MoreVertical, Star, Loader2, Trash2 } from 'lucide-react';
 import { 
   communityService, 
   CommunityPost, 
@@ -19,13 +20,15 @@ import {
   TrendingTopic,
   PostType,
   SortBy,
-  CommunityStats,
-  CreatePostDto
+  CommunityStats
 } from '@/services/community.service';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CommunityPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   
   // State
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,6 +58,7 @@ export default function CommunityPage() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<{ [key: string]: string }>({});
+  const [showAllComments, setShowAllComments] = useState<{ [key: string]: boolean }>({});
 
   // Fetch posts
   const fetchPosts = async () => {
@@ -128,10 +132,11 @@ export default function CommunityPage() {
 
   // Create post
   const handleCreatePost = async () => {
-    if (!newPostContent.trim() || !newPostTags.trim()) {
+
+    if (!newPostContent.trim()) {
       toast({
         title: 'Validation Error',
-        description: 'Please provide content and at least one tag.',
+        description: 'Please provide content for your post.',
         variant: 'destructive',
       });
       return;
@@ -191,6 +196,32 @@ export default function CommunityPage() {
       toast({
         title: 'Error',
         description: 'Failed to update like. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Delete post
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await communityService.deletePost(postId);
+      
+      // Remove post from local state
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+      
+      toast({
+        title: 'Success',
+        description: 'Post deleted successfully!',
+      });
+      
+      // Refresh stats
+      fetchStats();
+      fetchTrendingTopics();
+    } catch (error: any) {
+      console.error('Error deleting post:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete post. Please try again.',
         variant: 'destructive',
       });
     }
@@ -262,42 +293,6 @@ export default function CommunityPage() {
     }
   };
 
-  // Handle share functionality
-  const handleShare = async (postId: string, postContent: string) => {
-    try {
-      // Create a shareable link (you can customize this based on your routing)
-      const shareUrl = `${window.location.origin}/community/post/${postId}`;
-      
-      // Try to use native share API if available
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Community Post',
-          text: postContent.substring(0, 100) + '...',
-          url: shareUrl,
-        });
-        toast({
-          title: 'Success',
-          description: 'Post shared successfully!',
-        });
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(shareUrl);
-        toast({
-          title: 'Link Copied',
-          description: 'Post link copied to clipboard!',
-        });
-      }
-    } catch (error: any) {
-      // If user cancels share or clipboard fails
-      if (error.name !== 'AbortError') {
-        console.error('Error sharing:', error);
-        toast({
-          title: 'Info',
-          description: 'Share cancelled or unavailable.',
-        });
-      }
-    }
-  };
 
   // Toggle comment like
   const handleToggleCommentLike = async (commentId: string, postId: string) => {
@@ -409,21 +404,24 @@ export default function CommunityPage() {
     fetchPosts();
   }, [selectedFilter, sortBy, searchTerm]);
 
+  // Calculate stats
+  const totalPosts = stats?.posts?.total || 0;
+  const totalQuestions = stats?.questions?.total || 0;
+  const totalDiscussions = stats?.discussions?.total || 0;
+  
   const statsArray = stats
     ? [
-        { title: 'Community Members', value: stats.members.total.toString(), icon: Users, trend: stats.members.trend },
-        { title: 'Active Discussions', value: stats.discussions.total.toString(), icon: MessageCircle, trend: stats.discussions.trend },
-        { title: 'Events Shared', value: stats.events.total.toString(), icon: Calendar, trend: stats.events.trend },
-        { title: 'Achievements', value: stats.achievements.total.toString(), icon: Award, trend: stats.achievements.trend },
+        { title: 'Community Members', value: stats.members.total.toString(), icon: Users, trend: stats.members.trend, iconColor: 'text-blue-500' },
+        { title: 'Active Discussions', value: totalDiscussions.toString(), icon: MessageCircle, trend: stats.discussions.trend, iconColor: 'text-black' },
+        { title: 'Posts Created', value: totalPosts.toString(), icon: Calendar, trend: stats.posts.trend, iconColor: 'text-purple-500' },
+        { title: 'Active Questions', value: totalQuestions.toString(), icon: Award, trend: stats.questions.trend, iconColor: 'text-green-500' },
       ]
     : [];
 
   const getPostTypeColor = (type: string) => {
     const colors = {
       'discussion': 'bg-blue-100 text-blue-800',
-      'achievement': 'bg-green-100 text-green-800',
-      'question': 'bg-yellow-100 text-yellow-800',
-      'event-share': 'bg-purple-100 text-purple-800'
+      'question': 'bg-yellow-100 text-yellow-800'
     };
     return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -431,9 +429,7 @@ export default function CommunityPage() {
   const getPostTypeIcon = (type: string) => {
     const icons = {
       'discussion': MessageCircle,
-      'achievement': Award,
-      'question': Users,
-      'event-share': Calendar
+      'question': Users
     };
     return icons[type as keyof typeof icons] || MessageCircle;
   };
@@ -483,9 +479,24 @@ export default function CommunityPage() {
                 ))}
               </div>
             </div>
-            <Button variant="ghost" size="sm">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            {user?.id === post.author.id && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => handleDeletePost(post.id)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Post
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </CardHeader>
         
@@ -523,24 +534,7 @@ export default function CommunityPage() {
                   <MessageCircle className="h-4 w-4 mr-1" />
                   {post._count?.comments || post.comments.length}
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-gray-600 hover:text-green-600"
-                  onClick={() => handleShare(post.id, post.content)}
-                >
-                  <Share2 className="h-4 w-4 mr-1" />
-                  Share
-                </Button>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => handleToggleCommentInput(post.id)}
-              >
-                <Reply className="h-4 w-4 mr-1" />
-                Reply
-              </Button>
             </div>
             
             {/* Comment Input Section */}
@@ -584,7 +578,7 @@ export default function CommunityPage() {
             
             {post.comments.length > 0 && (
               <div className="space-y-3 pt-3 border-t bg-gray-50 -mx-6 px-6 py-4">
-                {post.comments.slice(0, 2).map((comment) => (
+                {(showAllComments[post.id] ? post.comments : post.comments.slice(0, 2)).map((comment) => (
                   <div key={comment.id}>
                     <div className="flex items-start space-x-3">
                       <Avatar className="h-8 w-8">
@@ -659,9 +653,24 @@ export default function CommunityPage() {
                     </div>
                   </div>
                 ))}
-                {post.comments.length > 2 && (
-                  <Button variant="ghost" size="sm" className="text-primary">
+                {post.comments.length > 2 && !showAllComments[post.id] && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-primary"
+                    onClick={() => setShowAllComments(prev => ({ ...prev, [post.id]: true }))}
+                  >
                     View all {post._count?.comments || post.comments.length} comments
+                  </Button>
+                )}
+                {post.comments.length > 2 && showAllComments[post.id] && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-primary"
+                    onClick={() => setShowAllComments(prev => ({ ...prev, [post.id]: false }))}
+                  >
+                    Show less
                   </Button>
                 )}
               </div>
@@ -691,10 +700,6 @@ export default function CommunityPage() {
               <p className="text-sm text-gray-500 capitalize">{user.role.toLowerCase()}</p>
               {user.location && <p className="text-xs text-gray-400">{user.location}</p>}
             </div>
-            <Button size="sm" variant="outline">
-              <UserPlus className="h-4 w-4 mr-1" />
-              Connect
-            </Button>
           </div>
           {preferences.length > 0 && (
             <div className="mt-3">
@@ -721,7 +726,7 @@ export default function CommunityPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Community</h1>
             <p className="text-gray-600 mt-1">
-              Connect, share, and engage with fellow sports enthusiasts
+              Connect and engage with fellow sports enthusiasts
             </p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -745,9 +750,7 @@ export default function CommunityPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="discussion">Discussion</SelectItem>
-                    <SelectItem value="achievement">Achievement</SelectItem>
                     <SelectItem value="question">Question</SelectItem>
-                    <SelectItem value="event-share">Event Share</SelectItem>
                   </SelectContent>
                 </Select>
                 <Textarea
@@ -757,7 +760,7 @@ export default function CommunityPage() {
                   rows={4}
                 />
                 <Input
-                  placeholder="Tags (comma-separated, e.g., basketball, community, running)"
+                  placeholder="Tags (optional, comma-separated, e.g., basketball, community, running)"
                   value={newPostTags}
                   onChange={(e) => setNewPostTags(e.target.value)}
                 />
@@ -810,7 +813,7 @@ export default function CommunityPage() {
                   <CardTitle className="text-sm font-medium">
                     {stat.title}
                   </CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  <stat.icon className={`h-4 w-4 ${stat.iconColor || 'text-muted-foreground'}`} />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>
@@ -849,9 +852,7 @@ export default function CommunityPage() {
                     <SelectContent>
                       <SelectItem value="all">All Posts</SelectItem>
                       <SelectItem value="discussion">Discussions</SelectItem>
-                      <SelectItem value="achievement">Achievements</SelectItem>
                       <SelectItem value="question">Questions</SelectItem>
-                      <SelectItem value="event-share">Event Shares</SelectItem>
                     </SelectContent>
                   </Select>
                   
@@ -865,11 +866,6 @@ export default function CommunityPage() {
                       <SelectItem value="discussed">Most Discussed</SelectItem>
                     </SelectContent>
                   </Select>
-                  
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -917,7 +913,8 @@ export default function CommunityPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Active Members */}
+            {/* 
+             */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Active Members</CardTitle>
@@ -940,12 +937,9 @@ export default function CommunityPage() {
                   ))
                 ) : activeMembers.length > 0 ? (
                   <>
-                    {activeMembers.map((user) => (
-                      <MemberCard key={user.id} user={user} />
+                    {activeMembers.map((member) => (
+                      <MemberCard key={member.id} user={member} />
                     ))}
-                    <Button variant="outline" className="w-full">
-                      View All Members
-                    </Button>
                   </>
                 ) : (
                   <p className="text-sm text-gray-500 text-center py-4">
@@ -992,21 +986,21 @@ export default function CommunityPage() {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => navigate('/dashboard/events')}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
                   Find Events
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="h-4 w-4 mr-2" />
-                  Join Groups
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => navigate('/dashboard/reviews')}
+                >
                   <Star className="h-4 w-4 mr-2" />
                   Leave Review
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Activity className="h-4 w-4 mr-2" />
-                  Track Progress
                 </Button>
               </CardContent>
             </Card>

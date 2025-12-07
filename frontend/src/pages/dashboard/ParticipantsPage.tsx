@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Search, Mail, MapPin, Calendar, Star, TrendingUp, MessageCircle, Download, CircleCheck as CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { Users, Search, MapPin, Calendar, Star, TrendingUp, Download, CircleCheck as CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService, EventParticipantDetail, EventSummary, OrganizerStatistics } from '@/services/event.service';
 import * as XLSX from 'xlsx';
@@ -404,21 +404,10 @@ export default function ParticipantsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sort By" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="name">Name</SelectItem>
-                      <SelectItem value="event">Event</SelectItem>
-                      <SelectItem value="date">Join Date</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </CardContent>
             </Card>
-
+            
             {/* Loading indicator for filter changes */}
             {isLoading && participants.length > 0 && (
               <div className="flex justify-center py-4">

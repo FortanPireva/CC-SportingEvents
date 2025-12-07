@@ -101,10 +101,10 @@ export default function ReviewsPage() {
   const pendingFeedback = events.filter(e => e.feedback === null).length;
 
   const stats = [
-    { title: 'Events Attended', value: events.length.toString(), icon: Calendar, trend: 'All time' },
-    { title: 'Reviews Given', value: totalRatings.toString(), icon: Star, trend: 'Total' },
-    { title: 'Average Rating', value: averageRating.toFixed(1), icon: Award, trend: 'Out of 10' },
-    { title: 'Pending Reviews', value: pendingFeedback.toString(), icon: Edit, trend: 'To complete' }
+    { title: 'Events Attended', value: events.length.toString(), icon: Calendar, color: 'text-purple-600', trend: 'All time' },
+    { title: 'Reviews Given', value: totalRatings.toString(), icon: Star, color: 'text-yellow-500', trend: 'Total' },
+    { title: 'Average Rating', value: averageRating.toFixed(1), icon: Award, color: 'text-gray-500', trend: 'Out of 10' },
+    { title: 'Events to Review', value: pendingFeedback.toString(), icon: Edit, color: 'text-blue-600', trend: 'To complete' }
   ];
 
   const RatingSelector = ({ rating, onRatingChange }: { rating: number; onRatingChange: (r: number) => void }) => {
@@ -285,7 +285,7 @@ export default function ReviewsPage() {
                 <CardTitle className="text-sm font-medium">
                   {stat.title}
                 </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stat.value}</div>

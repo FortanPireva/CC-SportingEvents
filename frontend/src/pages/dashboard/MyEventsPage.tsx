@@ -220,7 +220,7 @@ export default function MyEventsPage() {
               <Calendar className="h-16 w-16 text-primary/40" />
             </div>
           )}
-          <div className="absolute top-4 right-4 flex space-x-2">
+          <div className="absolute top-4 right-4 flex flex-wrap gap-2 justify-end">
             <Badge className={getStatusColor(event)}>
               {getStatusIcon(event)}
               <span className="ml-1 capitalize">{getEventStatus(event)}</span>

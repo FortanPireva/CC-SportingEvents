@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -34,8 +33,6 @@ export default function CreateEventPage() {
     maxParticipants: '',
     price: '',
     skillLevel: '',
-    isRecurring: false,
-    recurringPattern: '',
     tags: [] as string[],
     image: null as File | null
   });
@@ -61,11 +58,6 @@ export default function CreateEventPage() {
     { value: 'all', label: 'All Levels - Everyone welcome' }
   ];
 
-  const recurringPatterns = [
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'biweekly', label: 'Bi-weekly' },
-    { value: 'monthly', label: 'Monthly' }
-  ];
 
   const handleInputChange = (field: string, value: any) => {
     setEventData(prev => ({ ...prev, [field]: value }));
@@ -201,8 +193,6 @@ export default function CreateEventPage() {
         endTime: eventData.endTime,
         location: eventData.location,
         maxParticipants: parseInt(eventData.maxParticipants),
-        isRecurring: eventData.isRecurring,
-        recurringPattern: eventData.isRecurring ? eventData.recurringPattern : undefined,
         price: eventData.price ? parseFloat(eventData.price) : undefined,
         skillLevel: eventData.skillLevel || undefined,
         tags: eventData.tags.length > 0 ? eventData.tags : undefined,
@@ -388,33 +378,6 @@ export default function CreateEventPage() {
             />
           </div>
           {errors.endTime && <p className="text-red-500 text-sm mt-1">{errors.endTime}</p>}
-        </div>
-
-        <div className="md:col-span-2">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="recurring"
-              checked={eventData.isRecurring}
-              onCheckedChange={(checked) => handleInputChange('isRecurring', checked)}
-            />
-            <Label htmlFor="recurring">Make this a recurring event</Label>
-          </div>
-          
-          {eventData.isRecurring && (
-            <div className="mt-4">
-              <Label htmlFor="recurringPattern">Recurring Pattern</Label>
-              <Select value={eventData.recurringPattern} onValueChange={(value) => handleInputChange('recurringPattern', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select pattern" />
-                </SelectTrigger>
-                <SelectContent>
-                  {recurringPatterns.map((pattern) => (
-                    <SelectItem key={pattern.value} value={pattern.value}>{pattern.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -624,13 +587,6 @@ export default function CreateEventPage() {
                   <Badge key={index} variant="outline" className="text-xs">{tag}</Badge>
                 ))}
               </div>
-            </div>
-          )}
-          
-          {eventData.isRecurring && (
-            <div className="flex items-center text-sm">
-              <AlertCircle className="mr-2 h-4 w-4 text-blue-500" />
-              Recurring event: {eventData.recurringPattern}
             </div>
           )}
         </CardContent>

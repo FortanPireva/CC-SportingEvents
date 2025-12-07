@@ -140,8 +140,6 @@ model Event {
   longitude         Float?
   sportType         SportType
   maxParticipants   Int
-  isRecurring       Boolean     @default(false)
-  recurringPattern  String?     // weekly, monthly, etc.
   isSponsored       Boolean     @default(false)
   sponsorDetails    Json?
   imageUrl          String?

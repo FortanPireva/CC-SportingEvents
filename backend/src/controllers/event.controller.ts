@@ -44,14 +44,6 @@ export class EventController {
     body('maxParticipants')
       .isInt({ min: 1 })
       .withMessage('Maximum participants must be at least 1'),
-    body('isRecurring')
-      .optional()
-      .isBoolean()
-      .withMessage('isRecurring must be a boolean'),
-    body('recurringPattern')
-      .optional()
-      .isIn(['weekly', 'biweekly', 'monthly'])
-      .withMessage('Invalid recurring pattern'),
     body('price')
       .optional()
       .isFloat({ min: 0 })
@@ -192,8 +184,6 @@ export class EventController {
         endTime: req.body.endTime,
         location: req.body.location,
         maxParticipants: parseInt(req.body.maxParticipants),
-        isRecurring: req.body.isRecurring,
-        recurringPattern: req.body.recurringPattern,
         imageUrl: req.body.imageUrl,
         price: req.body.price ? parseFloat(req.body.price) : undefined,
         skillLevel: req.body.skillLevel,
@@ -388,8 +378,6 @@ export class EventController {
       if (req.body.endTime !== undefined) updateData.endTime = req.body.endTime;
       if (req.body.location !== undefined) updateData.location = req.body.location;
       if (req.body.maxParticipants !== undefined) updateData.maxParticipants = parseInt(req.body.maxParticipants);
-      if (req.body.isRecurring !== undefined) updateData.isRecurring = req.body.isRecurring;
-      if (req.body.recurringPattern !== undefined) updateData.recurringPattern = req.body.recurringPattern;
       if (req.body.imageUrl !== undefined) updateData.imageUrl = req.body.imageUrl;
       if (req.body.status !== undefined) updateData.status = req.body.status;
       if (req.body.price !== undefined) updateData.price = parseFloat(req.body.price);

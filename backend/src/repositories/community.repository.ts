@@ -306,7 +306,7 @@ export class CommunityRepository {
 
   // Stats
   async getCommunityStats() {
-    const [totalMembers, totalPosts, totalAchievements, totalEvents] = await Promise.all([
+    const [totalMembers, totalPosts, totalQuestions, totalDiscussions] = await Promise.all([
       prisma.user.count(),
       prisma.communityPost.count({
         where: {
@@ -317,7 +317,7 @@ export class CommunityRepository {
       }),
       prisma.communityPost.count({
         where: {
-          type: 'ACHIEVEMENT',
+          type: 'QUESTION',
           createdAt: {
             gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
           },
@@ -325,9 +325,9 @@ export class CommunityRepository {
       }),
       prisma.communityPost.count({
         where: {
-          type: 'EVENT_SHARE',
+          type: 'DISCUSSION',
           createdAt: {
-            gte: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // Last 24 hours
+            gte: new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
           },
         },
       }),
@@ -336,8 +336,8 @@ export class CommunityRepository {
     return {
       totalMembers,
       activePosts: totalPosts,
-      achievements: totalAchievements,
-      eventsShared: totalEvents,
+      questions: totalQuestions,
+      discussions: totalDiscussions,
     };
   }
 

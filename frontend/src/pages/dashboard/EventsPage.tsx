@@ -221,8 +221,6 @@ export default function EventsPage() {
       switch (sortBy) {
         case 'date':
           return new Date(a.date).getTime() - new Date(b.date).getTime();
-        case 'popularity':
-          return b.currentParticipants - a.currentParticipants;
         case 'price':
           return (a.price || 0) - (b.price || 0);
         default:
@@ -278,11 +276,6 @@ export default function EventsPage() {
             {isJoined && (
               <Badge variant="default" className="bg-green-500">
                 Registered
-              </Badge>
-            )}
-            {event.isRecurring && (
-              <Badge variant="default" className="bg-purple-500">
-                🔁 {event.recurringPattern ? event.recurringPattern.charAt(0).toUpperCase() + event.recurringPattern.slice(1) : 'Recurring'}
               </Badge>
             )}
             <Badge variant={status === 'upcoming' ? 'default' : 'secondary'}>
@@ -492,17 +485,6 @@ export default function EventsPage() {
                       {level === 'all' ? 'All Levels' : level.charAt(0).toUpperCase() + level.slice(1)}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-              
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort By" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date">Date</SelectItem>
-                  <SelectItem value="popularity">Popularity</SelectItem>
-                  <SelectItem value="price">Price</SelectItem>
                 </SelectContent>
               </Select>
             </div>

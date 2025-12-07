@@ -34,8 +34,6 @@ export interface Event {
   sportType: SportType;
   maxParticipants: number;
   currentParticipants: number;
-  isRecurring: boolean;
-  recurringPattern?: string;
   isSponsored: boolean;
   imageUrl?: string;
   status: string;
@@ -57,8 +55,6 @@ export interface CreateEventData {
   endTime: string;
   location: string;
   maxParticipants: number;
-  isRecurring?: boolean;
-  recurringPattern?: string;
   imageUrl?: string;
   price?: number;
   skillLevel?: string;

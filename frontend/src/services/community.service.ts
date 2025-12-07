@@ -58,11 +58,11 @@ export interface CommunityStats {
     total: number;
     trend: string;
   };
-  events: {
+  posts: {
     total: number;
     trend: string;
   };
-  achievements: {
+  questions: {
     total: number;
     trend: string;
   };

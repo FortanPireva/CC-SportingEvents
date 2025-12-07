@@ -33,8 +33,6 @@ export interface CreateEventData {
   endTime: string;
   location: string;
   maxParticipants: number;
-  isRecurring?: boolean;
-  recurringPattern?: string;
   imageUrl?: string;
   // Extra fields stored in sponsorDetails
   price?: number;
@@ -58,6 +56,7 @@ export interface EventFilters {
 }
 
 export class EventService {
+
   /**
    * Create a new event
    */
@@ -73,7 +72,7 @@ export class EventService {
     }
 
     // Map sport name to SportType enum
-    const sportType = sportTypeMapping[data.sportType] || SportType.OTHER;
+    const sportType = sportTypeMapping[data.sportType] || SportType.FOOTBALL;
 
     // Combine start and end time
     const time = `${data.startTime} - ${data.endTime}`;
@@ -85,6 +84,7 @@ export class EventService {
     if (data.tags && data.tags.length > 0) eventDetails.tags = data.tags;
     if (data.endTime) eventDetails.endTime = data.endTime;
 
+    // Create event
     const event = await prisma.event.create({
       data: {
         name: data.name,
@@ -94,8 +94,6 @@ export class EventService {
         location: data.location,
         sportType,
         maxParticipants: data.maxParticipants,
-        isRecurring: data.isRecurring || false,
-        recurringPattern: data.recurringPattern,
         imageUrl: data.imageUrl,
         organizerId,
         sponsorDetails: Object.keys(eventDetails).length > 0 ? eventDetails : undefined,
@@ -272,11 +270,9 @@ export class EventService {
     }
     if (data.location) updateData.location = data.location;
     if (data.sportType) {
-      updateData.sportType = sportTypeMapping[data.sportType] || SportType.OTHER;
+      updateData.sportType = sportTypeMapping[data.sportType] || SportType.FOOTBALL;
     }
     if (data.maxParticipants) updateData.maxParticipants = data.maxParticipants;
-    if (data.isRecurring !== undefined) updateData.isRecurring = data.isRecurring;
-    if (data.recurringPattern) updateData.recurringPattern = data.recurringPattern;
     if (data.imageUrl) updateData.imageUrl = data.imageUrl;
     if (data.status) updateData.status = data.status;
 
@@ -960,8 +956,6 @@ export class EventService {
       sportType: event.sportType,
       maxParticipants: event.maxParticipants,
       currentParticipants: event._count?.participations || 0,
-      isRecurring: event.isRecurring,
-      recurringPattern: event.recurringPattern,
       isSponsored: event.isSponsored,
       imageUrl: event.imageUrl,
       status: event.status,

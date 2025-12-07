@@ -123,16 +123,16 @@ export class CommunityService {
         trend: `+${Math.floor(stats.totalMembers * 0.05)} this month`,
       },
       discussions: {
+        total: stats.discussions,
+        trend: `+${Math.floor(stats.discussions * 0.15)} this week`,
+      },
+      posts: {
         total: stats.activePosts,
         trend: `+${Math.floor(stats.activePosts * 0.15)} this week`,
       },
-      events: {
-        total: stats.eventsShared,
-        trend: `+${stats.eventsShared} today`,
-      },
-      achievements: {
-        total: stats.achievements,
-        trend: `+${stats.achievements} this month`,
+      questions: {
+        total: stats.questions,
+        trend: `+${stats.questions} this month`,
       },
     };
   }
