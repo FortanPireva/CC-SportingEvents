@@ -25,6 +25,352 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+// PostCard component defined outside to prevent re-creation on every render
+interface PostCardProps {
+  post: CommunityPost;
+  user: any;
+  showCommentInput: string | null;
+  commentText: { [key: string]: string };
+  isSubmittingComment: boolean;
+  showReplyInput: string | null;
+  replyText: { [key: string]: string };
+  showAllComments: { [key: string]: boolean };
+  onTogglePostLike: (postId: string) => void;
+  onDeletePost: (postId: string) => void;
+  onToggleCommentInput: (postId: string) => void;
+  onSubmitComment: (postId: string) => void;
+  onSetCommentText: (postId: string, text: string) => void;
+  onSetShowCommentInput: (postId: string | null) => void;
+  onToggleCommentLike: (commentId: string, postId: string) => void;
+  onToggleReplyInput: (commentId: string) => void;
+  onSubmitReply: (postId: string, commentId: string) => void;
+  onSetReplyText: (commentId: string, text: string) => void;
+  onSetShowReplyInput: (commentId: string | null) => void;
+  onSetShowAllComments: (postId: string, show: boolean) => void;
+}
+
+const PostCard = ({ 
+  post, 
+  user,
+  showCommentInput,
+  commentText,
+  isSubmittingComment,
+  showReplyInput,
+  replyText,
+  showAllComments,
+  onTogglePostLike,
+  onDeletePost,
+  onToggleCommentInput,
+  onSubmitComment,
+  onSetCommentText,
+  onSetShowCommentInput,
+  onToggleCommentLike,
+  onToggleReplyInput,
+  onSubmitReply,
+  onSetReplyText,
+  onSetShowReplyInput,
+  onSetShowAllComments,
+}: PostCardProps) => {
+  const getPostTypeColor = (type: string) => {
+    const colors = {
+      'discussion': 'bg-blue-100 text-blue-800',
+      'question': 'bg-yellow-100 text-yellow-800'
+    };
+    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getPostTypeIcon = (type: string) => {
+    const icons = {
+      'discussion': MessageCircle,
+      'question': Users
+    };
+    return icons[type as keyof typeof icons] || MessageCircle;
+  };
+
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const PostTypeIcon = getPostTypeIcon(post.type);
+  
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start space-x-3">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={post.author.avatar} alt={post.author.name} />
+            <AvatarFallback>
+              {post.author.name.split(' ').map(n => n[0]).join('')}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2">
+              <h4 className="font-medium text-gray-900">{post.author.name}</h4>
+              <Badge variant="secondary" className="text-xs capitalize">
+                {post.author.role.toLowerCase()}
+              </Badge>
+              <span className="text-sm text-gray-500">•</span>
+              <span className="text-sm text-gray-500">{formatTimeAgo(new Date(post.createdAt))}</span>
+            </div>
+            <div className="flex items-center space-x-2 mt-1">
+              <Badge className={`text-xs ${getPostTypeColor(post.type)}`}>
+                <PostTypeIcon className="h-3 w-3 mr-1" />
+                {post.type.replace('-', ' ')}
+              </Badge>
+              {post.tags.slice(0, 2).map((tag, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          {user?.id === post.author.id && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => onDeletePost(post.id)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </CardHeader>
+      
+      <CardContent className="pt-0">
+        <div className="space-y-4">
+          <p className="text-gray-700 leading-relaxed">{post.content}</p>
+          
+          {post.imageUrl && (
+            <div className="rounded-lg overflow-hidden">
+              <img 
+                src={post.imageUrl} 
+                alt="Post image"
+                className="w-full h-48 object-cover"
+              />
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between pt-3 border-t">
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-gray-600 hover:text-red-600"
+                onClick={() => onTogglePostLike(post.id)}
+              >
+                <Heart className="h-4 w-4 mr-1" />
+                {post.likes}
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-gray-600 hover:text-blue-600"
+                onClick={() => onToggleCommentInput(post.id)}
+              >
+                <MessageCircle className="h-4 w-4 mr-1" />
+                {post._count?.comments || post.comments.length}
+              </Button>
+            </div>
+          </div>
+          
+          {/* Comment Input Section */}
+          {showCommentInput === post.id && (
+            <div className="pt-4 border-t mt-4">
+              <div className="flex space-x-3">
+                <Textarea
+                  placeholder="Write a comment..."
+                  value={commentText[post.id] || ''}
+                  onChange={(e) => onSetCommentText(post.id, e.target.value)}
+                  rows={2}
+                  className="flex-1"
+                />
+              </div>
+              <div className="flex justify-end space-x-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onSetShowCommentInput(null)}
+                  disabled={isSubmittingComment}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => onSubmitComment(post.id)}
+                  disabled={isSubmittingComment || !commentText[post.id]?.trim()}
+                >
+                  {isSubmittingComment ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Posting...
+                    </>
+                  ) : (
+                    'Post Comment'
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {post.comments.length > 0 && (
+            <div className="space-y-3 pt-3 border-t bg-gray-50 -mx-6 px-6 py-4">
+              {(showAllComments[post.id] ? post.comments : post.comments.slice(0, 2)).map((comment) => (
+                <div key={comment.id}>
+                  <div className="flex items-start space-x-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
+                      <AvatarFallback className="text-xs">
+                        {comment.author.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-sm">{comment.author.name}</span>
+                        <span className="text-xs text-gray-500">{formatTimeAgo(new Date(comment.createdAt))}</span>
+                      </div>
+                      <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs h-6 px-2 hover:text-red-600"
+                          onClick={() => onToggleCommentLike(comment.id, post.id)}
+                        >
+                          <ThumbsUp className="h-3 w-3 mr-1" />
+                          {comment.likes}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs h-6 px-2 hover:text-blue-600"
+                          onClick={() => onToggleReplyInput(comment.id)}
+                        >
+                          Reply
+                        </Button>
+                      </div>
+                      
+                      {/* Reply Input for Comment */}
+                      {showReplyInput === comment.id && (
+                        <div className="mt-3 ml-4">
+                          <Textarea
+                            placeholder="Write a reply..."
+                            value={replyText[comment.id] || ''}
+                            onChange={(e) => onSetReplyText(comment.id, e.target.value)}
+                            rows={2}
+                            className="text-sm"
+                          />
+                          <div className="flex justify-end space-x-2 mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => onSetShowReplyInput(null)}
+                              disabled={isSubmittingComment}
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => onSubmitReply(post.id, comment.id)}
+                              disabled={isSubmittingComment || !replyText[comment.id]?.trim()}
+                            >
+                              {isSubmittingComment ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                                  Posting...
+                                </>
+                              ) : (
+                                'Reply'
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {post.comments.length > 2 && !showAllComments[post.id] && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-primary"
+                  onClick={() => onSetShowAllComments(post.id, true)}
+                >
+                  View all {post._count?.comments || post.comments.length} comments
+                </Button>
+              )}
+              {post.comments.length > 2 && showAllComments[post.id] && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-primary"
+                  onClick={() => onSetShowAllComments(post.id, false)}
+                >
+                  Show less
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// MemberCard component defined outside to prevent re-creation on every render
+const MemberCard = ({ user }: { user: ActiveMember }) => {
+  const preferences = user.preferences ? 
+    (Array.isArray(user.preferences) ? user.preferences : []) : [];
+  
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center space-x-3">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarFallback>
+              {user.name.split(' ').map(n => n[0]).join('')}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-gray-900 truncate">{user.name}</h4>
+            <p className="text-sm text-gray-500 capitalize">{user.role.toLowerCase()}</p>
+            {user.location && <p className="text-xs text-gray-400">{user.location}</p>}
+          </div>
+        </div>
+        {preferences.length > 0 && (
+          <div className="mt-3">
+            <div className="text-xs text-gray-500 mb-2">Interests</div>
+            <div className="flex flex-wrap gap-1">
+              {preferences.slice(0, 3).map((sport: string, index: number) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {sport}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 export default function CommunityPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -418,305 +764,6 @@ export default function CommunityPage() {
       ]
     : [];
 
-  const getPostTypeColor = (type: string) => {
-    const colors = {
-      'discussion': 'bg-blue-100 text-blue-800',
-      'question': 'bg-yellow-100 text-yellow-800'
-    };
-    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getPostTypeIcon = (type: string) => {
-    const icons = {
-      'discussion': MessageCircle,
-      'question': Users
-    };
-    return icons[type as keyof typeof icons] || MessageCircle;
-  };
-
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const PostCard = ({ post }: { post: CommunityPost }) => {
-    const PostTypeIcon = getPostTypeIcon(post.type);
-    
-    return (
-      <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-start space-x-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={post.author.avatar} alt={post.author.name} />
-              <AvatarFallback>
-                {post.author.name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <h4 className="font-medium text-gray-900">{post.author.name}</h4>
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {post.author.role.toLowerCase()}
-                </Badge>
-                <span className="text-sm text-gray-500">•</span>
-                <span className="text-sm text-gray-500">{formatTimeAgo(new Date(post.createdAt))}</span>
-              </div>
-              <div className="flex items-center space-x-2 mt-1">
-                <Badge className={`text-xs ${getPostTypeColor(post.type)}`}>
-                  <PostTypeIcon className="h-3 w-3 mr-1" />
-                  {post.type.replace('-', ' ')}
-                </Badge>
-                {post.tags.slice(0, 2).map((tag, index) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    #{tag}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            {user?.id === post.author.id && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    onClick={() => handleDeletePost(post.id)}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Post
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </CardHeader>
-        
-        <CardContent className="pt-0">
-          <div className="space-y-4">
-            <p className="text-gray-700 leading-relaxed">{post.content}</p>
-            
-            {post.imageUrl && (
-              <div className="rounded-lg overflow-hidden">
-                <img 
-                  src={post.imageUrl} 
-                  alt="Post image"
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-            )}
-            
-            <div className="flex items-center justify-between pt-3 border-t">
-              <div className="flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-gray-600 hover:text-red-600"
-                  onClick={() => handleTogglePostLike(post.id)}
-                >
-                  <Heart className="h-4 w-4 mr-1" />
-                  {post.likes}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-gray-600 hover:text-blue-600"
-                  onClick={() => handleToggleCommentInput(post.id)}
-                >
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  {post._count?.comments || post.comments.length}
-                </Button>
-              </div>
-            </div>
-            
-            {/* Comment Input Section */}
-            {showCommentInput === post.id && (
-              <div className="pt-4 border-t mt-4">
-                <div className="flex space-x-3">
-                  <Textarea
-                    placeholder="Write a comment..."
-                    value={commentText[post.id] || ''}
-                    onChange={(e) => setCommentText(prev => ({ ...prev, [post.id]: e.target.value }))}
-                    rows={2}
-                    className="flex-1"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2 mt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setShowCommentInput(null)}
-                    disabled={isSubmittingComment}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="sm"
-                    onClick={() => handleSubmitComment(post.id)}
-                    disabled={isSubmittingComment || !commentText[post.id]?.trim()}
-                  >
-                    {isSubmittingComment ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Posting...
-                      </>
-                    ) : (
-                      'Post Comment'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-            
-            {post.comments.length > 0 && (
-              <div className="space-y-3 pt-3 border-t bg-gray-50 -mx-6 px-6 py-4">
-                {(showAllComments[post.id] ? post.comments : post.comments.slice(0, 2)).map((comment) => (
-                  <div key={comment.id}>
-                    <div className="flex items-start space-x-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
-                        <AvatarFallback className="text-xs">
-                          {comment.author.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium text-sm">{comment.author.name}</span>
-                          <span className="text-xs text-gray-500">{formatTimeAgo(new Date(comment.createdAt))}</span>
-                        </div>
-                        <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-xs h-6 px-2 hover:text-red-600"
-                            onClick={() => handleToggleCommentLike(comment.id, post.id)}
-                          >
-                            <ThumbsUp className="h-3 w-3 mr-1" />
-                            {comment.likes}
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-xs h-6 px-2 hover:text-blue-600"
-                            onClick={() => handleToggleReplyInput(comment.id)}
-                          >
-                            Reply
-                          </Button>
-                        </div>
-                        
-                        {/* Reply Input for Comment */}
-                        {showReplyInput === comment.id && (
-                          <div className="mt-3 ml-4">
-                            <Textarea
-                              placeholder="Write a reply..."
-                              value={replyText[comment.id] || ''}
-                              onChange={(e) => setReplyText(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                              rows={2}
-                              className="text-sm"
-                            />
-                            <div className="flex justify-end space-x-2 mt-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setShowReplyInput(null)}
-                                disabled={isSubmittingComment}
-                              >
-                                Cancel
-                              </Button>
-                              <Button 
-                                size="sm"
-                                onClick={() => handleSubmitReply(post.id, comment.id)}
-                                disabled={isSubmittingComment || !replyText[comment.id]?.trim()}
-                              >
-                                {isSubmittingComment ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                                    Posting...
-                                  </>
-                                ) : (
-                                  'Reply'
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {post.comments.length > 2 && !showAllComments[post.id] && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-primary"
-                    onClick={() => setShowAllComments(prev => ({ ...prev, [post.id]: true }))}
-                  >
-                    View all {post._count?.comments || post.comments.length} comments
-                  </Button>
-                )}
-                {post.comments.length > 2 && showAllComments[post.id] && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-primary"
-                    onClick={() => setShowAllComments(prev => ({ ...prev, [post.id]: false }))}
-                  >
-                    Show less
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const MemberCard = ({ user }: { user: ActiveMember }) => {
-    const preferences = user.preferences ? 
-      (Array.isArray(user.preferences) ? user.preferences : []) : [];
-    
-    return (
-      <Card className="hover:shadow-md transition-shadow">
-        <CardContent className="p-4">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>
-                {user.name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-gray-900 truncate">{user.name}</h4>
-              <p className="text-sm text-gray-500 capitalize">{user.role.toLowerCase()}</p>
-              {user.location && <p className="text-xs text-gray-400">{user.location}</p>}
-            </div>
-          </div>
-          {preferences.length > 0 && (
-            <div className="mt-3">
-              <div className="text-xs text-gray-500 mb-2">Interests</div>
-              <div className="flex flex-wrap gap-1">
-                {preferences.slice(0, 3).map((sport: string, index: number) => (
-                  <Badge key={index} variant="outline" className="text-xs">
-                    {sport}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
 
   return (
     <DashboardLayout>
@@ -894,7 +941,29 @@ export default function CommunityPage() {
                 ))
               ) : posts.length > 0 ? (
                 posts.map((post) => (
-                  <PostCard key={post.id} post={post} />
+                  <PostCard 
+                    key={post.id} 
+                    post={post}
+                    user={user}
+                    showCommentInput={showCommentInput}
+                    commentText={commentText}
+                    isSubmittingComment={isSubmittingComment}
+                    showReplyInput={showReplyInput}
+                    replyText={replyText}
+                    showAllComments={showAllComments}
+                    onTogglePostLike={handleTogglePostLike}
+                    onDeletePost={handleDeletePost}
+                    onToggleCommentInput={handleToggleCommentInput}
+                    onSubmitComment={handleSubmitComment}
+                    onSetCommentText={(postId, text) => setCommentText(prev => ({ ...prev, [postId]: text }))}
+                    onSetShowCommentInput={setShowCommentInput}
+                    onToggleCommentLike={handleToggleCommentLike}
+                    onToggleReplyInput={handleToggleReplyInput}
+                    onSubmitReply={handleSubmitReply}
+                    onSetReplyText={(commentId, text) => setReplyText(prev => ({ ...prev, [commentId]: text }))}
+                    onSetShowReplyInput={setShowReplyInput}
+                    onSetShowAllComments={(postId, show) => setShowAllComments(prev => ({ ...prev, [postId]: show }))}
+                  />
                 ))
               ) : (
                 <Card>
