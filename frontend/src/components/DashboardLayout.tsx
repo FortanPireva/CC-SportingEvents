@@ -20,7 +20,6 @@ import {
   LogOut, 
   Menu,
   Plus,
-  MapPin,
   Star,
   Bell
 } from 'lucide-react';
@@ -55,7 +54,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: 'My Events', href: '/dashboard/my-events', icon: Calendar },
     { name: 'Create Event', href: '/dashboard/create-event', icon: Plus },
     { name: 'Participants', href: '/dashboard/participants', icon: Users },
-    // { name: 'Venues', href: '/dashboard/venues', icon: MapPin },
   ];
 
   const currentNavigation = user?.type === 'organizer' ? organizerNavigation : navigation;

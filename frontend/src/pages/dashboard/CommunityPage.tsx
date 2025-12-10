@@ -417,7 +417,7 @@ export default function CommunityPage() {
       });
       
       if (response.data) {
-        setPosts(response.data);
+        setPosts(response.data as any);
       }
     } catch (error: any) {
       console.error('Error fetching posts:', error);
@@ -437,7 +437,7 @@ export default function CommunityPage() {
       setIsLoadingStats(true);
       const response = await communityService.getCommunityStats();
       if (response.data) {
-        setStats(response.data);
+        setStats(response.data as any);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -452,7 +452,7 @@ export default function CommunityPage() {
       setIsLoadingMembers(true);
       const response = await communityService.getActiveMembers(4);
       if (response.data) {
-        setActiveMembers(response.data);
+        setActiveMembers(response.data as any);
       }
     } catch (error) {
       console.error('Error fetching members:', error);
@@ -467,7 +467,7 @@ export default function CommunityPage() {
       setIsLoadingTopics(true);
       const response = await communityService.getTrendingTopics(5);
       if (response.data) {
-        setTrendingTopics(response.data);
+        setTrendingTopics(response.data as any);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
@@ -530,13 +530,16 @@ export default function CommunityPage() {
       const response = await communityService.togglePostLike(postId);
       
       // Update local state
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.id === postId
-            ? { ...post, likes: response.data.liked ? post.likes + 1 : post.likes - 1 }
-            : post
-        )
-      );
+      if (response.data) {
+        const liked = (response.data as any).liked;
+        setPosts(prevPosts =>
+          prevPosts.map(post =>
+            post.id === postId
+              ? { ...post, likes: liked ? post.likes + 1 : post.likes - 1 }
+              : post
+          )
+        );
+      }
     } catch (error: any) {
       console.error('Error toggling like:', error);
       toast({
@@ -603,21 +606,23 @@ export default function CommunityPage() {
       });
 
       // Update local state with new comment
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              comments: [response.data, ...post.comments],
-              _count: {
-                ...post._count,
-                comments: (post._count?.comments || post.comments.length) + 1,
-              },
-            };
-          }
-          return post;
-        })
-      );
+      if (response.data) {
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post.id === postId) {
+              return {
+                ...post,
+                comments: [response.data as any, ...post.comments],
+                _count: {
+                  ...post._count,
+                  comments: (post._count?.comments || post.comments.length) + 1,
+                },
+              };
+            }
+            return post;
+          })
+        );
+      }
 
       // Clear comment text and hide input
       setCommentText(prev => ({ ...prev, [postId]: '' }));
@@ -646,21 +651,24 @@ export default function CommunityPage() {
       const response = await communityService.toggleCommentLike(commentId);
       
       // Update local state
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              comments: post.comments.map(comment =>
-                comment.id === commentId
-                  ? { ...comment, likes: response.data.liked ? comment.likes + 1 : comment.likes - 1 }
-                  : comment
-              ),
-            };
-          }
-          return post;
-        })
-      );
+      if (response.data) {
+        const liked = (response.data as any).liked;
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post.id === postId) {
+              return {
+                ...post,
+                comments: post.comments.map(comment =>
+                  comment.id === commentId
+                    ? { ...comment, likes: liked ? comment.likes + 1 : comment.likes - 1 }
+                    : comment
+                ),
+              };
+            }
+            return post;
+          })
+        );
+      }
     } catch (error: any) {
       console.error('Error toggling comment like:', error);
       toast({
@@ -701,21 +709,23 @@ export default function CommunityPage() {
       });
 
       // Update local state with new comment
-      setPosts(prevPosts =>
-        prevPosts.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              comments: [response.data, ...post.comments],
-              _count: {
-                ...post._count,
-                comments: (post._count?.comments || post.comments.length) + 1,
-              },
-            };
-          }
-          return post;
-        })
-      );
+      if (response.data) {
+        setPosts(prevPosts =>
+          prevPosts.map(post => {
+            if (post.id === postId) {
+              return {
+                ...post,
+                comments: [response.data as any, ...post.comments],
+                _count: {
+                  ...post._count,
+                  comments: (post._count?.comments || post.comments.length) + 1,
+                },
+              };
+            }
+            return post;
+          })
+        );
+      }
 
       // Clear reply text and hide input
       setReplyText(prev => ({ ...prev, [commentId]: '' }));
@@ -892,7 +902,7 @@ export default function CommunityPage() {
                     />
                   </div>
                   
-                  <Select value={selectedFilter} onValueChange={setSelectedFilter}>
+                  <Select value={selectedFilter} onValueChange={(value) => setSelectedFilter(value as 'all' | PostType)}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Posts" />
                     </SelectTrigger>
@@ -903,7 +913,7 @@ export default function CommunityPage() {
                     </SelectContent>
                   </Select>
                   
-                  <Select value={sortBy} onValueChange={setSortBy}>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortBy)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sort By" />
                     </SelectTrigger>

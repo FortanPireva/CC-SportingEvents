@@ -17,7 +17,7 @@ export default function ParticipantsPage() {
   useAuth(); // Ensure user is authenticated
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('all');
-  const [sortBy, setSortBy] = useState('date');
+  const [sortBy] = useState('date');
   const [showAllEvents, setShowAllEvents] = useState(false);
   
   // Data states

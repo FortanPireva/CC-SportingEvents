@@ -34,19 +34,6 @@ export interface Event {
   created_at: Date;
 }
 
-export interface Facility {
-  id: string;
-  name: string;
-  location: string;
-  sports: string[];
-  amenities: string[];
-  hourlyRate: number;
-  availability: {
-    day: string;
-    slots: { start: string; end: string; available: boolean }[];
-  }[];
-}
-
 export interface AuthContextType {
   user: User | null;
   isLoading: boolean;

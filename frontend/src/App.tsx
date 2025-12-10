@@ -8,12 +8,9 @@ import ResetPasswordPage from '@/pages/auth/ResetPasswordPage';
 import SetNewPasswordPage from '@/pages/auth/SetNewPasswordPage';
 import DashboardPage from '@/pages/dashboard/DashboardPage';
 import EventsPage from '@/pages/dashboard/EventsPage';
-import VenuesPage from '@/pages/dashboard/VenuesPage';
 import CommunityPage from '@/pages/dashboard/CommunityPage';
 import ReviewsPage from '@/pages/dashboard/ReviewsPage';
 import SettingsPage from '@/pages/dashboard/SettingsPage';
-import HomePage from './pages/HomePage';
-import VigiPage from './pages/VigiPage';
 import MyEventsPage from './pages/dashboard/MyEventsPage';
 import CreateEventPage from './pages/dashboard/CreateEventPage';
 import ParticipantsPage from './pages/dashboard/ParticipantsPage';
@@ -23,15 +20,12 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/vigi" element={<VigiPage />} />
         <Route path="/auth/signin" element={<SignInPage />} />
         <Route path="/auth/signup" element={<SignUpPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/set-new-password" element={<SetNewPasswordPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/events" element={<EventsPage />} />
-        {/* <Route path="/dashboard/venues" element={<VenuesPage />} /> */}
         <Route path="/dashboard/community" element={<CommunityPage />} />
         <Route path="/dashboard/reviews" element={<ReviewsPage />} />
         <Route path="/dashboard/my-events" element={<MyEventsPage />} />

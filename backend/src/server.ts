@@ -8,8 +8,6 @@ import authRoutes from './routes/auth.routes';
 import eventRoutes from './routes/event.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import communityRoutes from './routes/community.routes';
-// import userRoutes from './routes/user.routes';
-// import participationRoutes from './routes/participation.routes';
 
 dotenv.config();
 
@@ -32,8 +30,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/community', communityRoutes);
-// app.use('/api/users', userRoutes);
-// app.use('/api/participations', participationRoutes);
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

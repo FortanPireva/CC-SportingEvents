@@ -34,7 +34,7 @@ export default function EventsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSport, setSelectedSport] = useState('all');
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
-  const [sortBy, setSortBy] = useState('date');
+  const [sortBy] = useState('date');
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [joinedEvents, setJoinedEvents] = useState<EventWithParticipation[]>([]);

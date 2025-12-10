@@ -6,15 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { Star, TrendingUp, Calendar, MapPin, Award, Loader2, CheckCircle, Edit } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { eventService, FeedbackEvent } from '@/services/event.service';
 import { toast } from 'sonner';
 
 export default function ReviewsPage() {
-  const { user } = useAuth();
+  useAuth();
   const [events, setEvents] = useState<FeedbackEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<FeedbackEvent | null>(null);
