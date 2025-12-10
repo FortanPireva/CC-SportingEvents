@@ -234,9 +234,9 @@ export default function EventsPage() {
 
   const stats = [
     { title: 'Total Events', value: events.length.toString(), icon: Calendar, trend: `${upcomingEvents.length} upcoming`, color: 'text-purple-600' },
-    ...(user ? [{ title: 'My Joined Events', value: joinedEvents.length.toString(), icon: Activity , trend: 'Events you\'re attending', color: 'text-green-600' }] : []),
-    { title: 'Active Participants', value: events.reduce((sum, e) => sum + e.currentParticipants, 0).toString(), icon: Users, trend: 'Across all events', color: 'text-black-600' },
-    { title: 'Sports Available', value: [...new Set(events.map(e => e.sportType))].length.toString(), icon: Star, trend: 'Different sports', color: 'text-blue-600' },
+    ...(user ? [{ title: 'My Joined Events', value: joinedEvents.length.toString(), icon: Activity , trend: 'Events you\'re attending', color: 'text-blue-600' }] : []),
+    { title: 'Active Participants', value: events.reduce((sum, e) => sum + e.currentParticipants, 0).toString(), icon: Users, trend: 'Across all events', color: 'text-green-600' },
+    { title: 'Sports Available', value: [...new Set(events.map(e => e.sportType))].length.toString(), icon: Star, trend: 'Different sports', color: 'text-yellow-600' },
     ...(user ? [] : [{ title: 'Avg. Price', value: events.length > 0 ? `$${(events.filter(e => e.price).reduce((sum, e) => sum + (e.price || 0), 0) / (events.filter(e => e.price).length || 1)).toFixed(2)}` : '$0', icon: DollarSign, trend: 'Per event', color: 'text-green-600' }])
   ];
 
