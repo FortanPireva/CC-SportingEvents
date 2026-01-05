@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    image: ${DOCKER_IMAGE:-ghcr.io/codeks/cc-sporting-events:latest}
+    container_name: cc-sporting-events
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL:-${DATABASE_URL}}
+      - JWT_SECRET=${JWT_SECRET}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - FRONTEND_URL=${FRONTEND_URL:-}
+      - PORT=3000
