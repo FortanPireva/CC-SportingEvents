@@ -1,15 +1,16 @@
+import dotenv from 'dotenv';
+// Load environment variables BEFORE importing any modules that depend on them
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
 import eventRoutes from './routes/event.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import communityRoutes from './routes/community.routes';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
