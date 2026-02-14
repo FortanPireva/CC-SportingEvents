@@ -80,9 +80,9 @@ This is a monorepo containing:
 │  Tables:                                                         │
 │  ├─ User, Organizer, Event, Participation                       │
 │  ├─ CommunityPost, PostComment, PostLike, CommentLike           │
-│  ├─ Feedback, Notification, EventBookmark                       │
-│  └─ Team, PasswordResetToken                                    │
-│                                                                   │
+│  ├─ Feedback, Notification                                      │
+│  └─ PasswordResetToken                                          │
+│                                                                  │
 │  Features: Relations, Indexes, Cascading Deletes, Constraints   │
 └─────────────────────────────────────────────────────────────────┘
 ```
