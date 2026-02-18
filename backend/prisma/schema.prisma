@@ -2,12 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -43,29 +44,29 @@ enum SportType {
 }
 
 model User {
-  id                String          @id @default(uuid())
-  name              String
-  email             String          @unique
-  password          String
-  avatar            String?         // Profile picture URL
-  location          String?
-  role              UserRole        @default(USER)
-  preferences       Json?           // Sport preferences, notification settings
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  avatar      String? // Profile picture URL
+  location    String?
+  role        UserRole @default(USER)
+  preferences Json? // Sport preferences, notification settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
   // Relations
-  organizer         Organizer?
-  participations    Participation[]
-  notifications     Notification[]
-  bookmarkedEvents  EventBookmark[]
-  feedback          Feedback[]
+  organizer           Organizer?
+  participations      Participation[]
+  notifications       Notification[]
+  bookmarkedEvents    EventBookmark[]
+  feedback            Feedback[]
   passwordResetTokens PasswordResetToken[]
-  communityPosts    CommunityPost[] @relation("CommunityPosts")
-  postComments      PostComment[]   @relation("PostComments")
-  postLikes         PostLike[]      @relation("PostLikes")
-  commentLikes      CommentLike[]   @relation("CommentLikes")
-  
+  communityPosts      CommunityPost[]      @relation("CommunityPosts")
+  postComments        PostComment[]        @relation("PostComments")
+  postLikes           PostLike[]           @relation("PostLikes")
+  commentLikes        CommentLike[]        @relation("CommentLikes")
+
   @@index([email])
 }
 
@@ -75,41 +76,41 @@ model Organizer {
   contactInfo String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events      Event[]
-  
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events Event[]
+
   @@index([userId])
 }
 
 model Event {
-  id                String      @id @default(uuid())
-  name              String
-  description       String      @db.Text
-  date              DateTime
-  time              String
-  location          String
-  latitude          Float?
-  longitude         Float?
-  sportType         SportType
-  maxParticipants   Int
-  isSponsored       Boolean     @default(false)
-  sponsorDetails    Json?
-  imageUrl          String?
-  status            String      @default("active") // active, cancelled, completed
-  organizerId       String
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  
+  id              String    @id @default(uuid())
+  name            String
+  description     String    @db.Text
+  date            DateTime
+  time            String
+  location        String
+  latitude        Float?
+  longitude       Float?
+  sportType       SportType
+  maxParticipants Int
+  isSponsored     Boolean   @default(false)
+  sponsorDetails  Json?
+  imageUrl        String?
+  status          String    @default("active") // active, cancelled, completed
+  organizerId     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
   // Relations
-  organizer         Organizer        @relation(fields: [organizerId], references: [id])
-  participations    Participation[]
-  notifications     Notification[]
-  bookmarks         EventBookmark[]
-  feedback          Feedback[]
-  teams             Team[]
-  
+  organizer      Organizer       @relation(fields: [organizerId], references: [id])
+  participations Participation[]
+  notifications  Notification[]
+  bookmarks      EventBookmark[]
+  feedback       Feedback[]
+  teams          Team[]
+
   @@index([organizerId])
   @@index([date])
   @@index([sportType])
@@ -117,50 +118,50 @@ model Event {
 }
 
 model Participation {
-  id          String              @id @default(uuid())
-  status      ParticipationStatus @default(REGISTERED)
-  userId      String
-  eventId     String
-  teamId      String?
-  registeredAt DateTime           @default(now())
-  updatedAt   DateTime            @updatedAt
-  
+  id           String              @id @default(uuid())
+  status       ParticipationStatus @default(REGISTERED)
+  userId       String
+  eventId      String
+  teamId       String?
+  registeredAt DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
   // Relations
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  team        Team?               @relation(fields: [teamId], references: [id])
-  
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  team  Team? @relation(fields: [teamId], references: [id])
+
   @@unique([userId, eventId])
   @@index([userId])
   @@index([eventId])
 }
 
 model Team {
-  id             String          @id @default(uuid())
-  name           String
-  eventId        String
-  createdAt      DateTime        @default(now())
-  
+  id        String   @id @default(uuid())
+  name      String
+  eventId   String
+  createdAt DateTime @default(now())
+
   // Relations
-  event          Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  participants   Participation[]
-  
+  event        Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  participants Participation[]
+
   @@index([eventId])
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  message     String   @db.Text
-  type        String   // event_reminder, event_cancelled, event_updated, etc.
-  isRead      Boolean  @default(false)
-  userId      String
-  eventId     String?
-  createdAt   DateTime @default(now())
-  
+  id        String   @id @default(uuid())
+  message   String   @db.Text
+  type      String // event_reminder, event_cancelled, event_updated, etc.
+  isRead    Boolean  @default(false)
+  userId    String
+  eventId   String?
+  createdAt DateTime @default(now())
+
   // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([eventId])
 }
@@ -170,43 +171,43 @@ model EventBookmark {
   userId    String
   eventId   String
   createdAt DateTime @default(now())
-  
+
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([userId, eventId])
   @@index([userId])
 }
 
 model Feedback {
   id        String   @id @default(uuid())
-  rating    Int      // 1-10 as per requirements
+  rating    Int // 1-10 as per requirements
   comment   String   @db.Text
   userId    String
   eventId   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
   @@unique([userId, eventId])
   @@index([eventId])
 }
 
 model PasswordResetToken {
   id        String   @id @default(uuid())
-  otpCode   String?  // OTP code (6 digits) - optional for migration
+  otpCode   String? // OTP code (6 digits) - optional for migration
   userId    String
   expiresAt DateTime
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
-  
+
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([otpCode])
   @@index([userId])
   @@index([userId, otpCode])
@@ -220,71 +221,70 @@ enum PostType {
 }
 
 model CommunityPost {
-  id          String            @id @default(uuid())
-  content     String            @db.Text
-  type        PostType          @default(DISCUSSION)
-  authorId    String
-  likes       Int               @default(0)
-  tags        String[]
-  imageUrl    String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  type      PostType @default(DISCUSSION)
+  authorId  String
+  likes     Int      @default(0)
+  tags      String[]
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  author      User              @relation("CommunityPosts", fields: [authorId], references: [id], onDelete: Cascade)
-  comments    PostComment[]
-  postLikes   PostLike[]
-  
+  author    User          @relation("CommunityPosts", fields: [authorId], references: [id], onDelete: Cascade)
+  comments  PostComment[]
+  postLikes PostLike[]
+
   @@index([authorId])
   @@index([type])
   @@index([createdAt])
 }
 
 model PostComment {
-  id          String       @id @default(uuid())
-  content     String       @db.Text
-  authorId    String
-  postId      String
-  likes       Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  authorId  String
+  postId    String
+  likes     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  author      User         @relation("PostComments", fields: [authorId], references: [id], onDelete: Cascade)
-  post        CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author       User          @relation("PostComments", fields: [authorId], references: [id], onDelete: Cascade)
+  post         CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   commentLikes CommentLike[]
-  
+
   @@index([authorId])
   @@index([postId])
 }
 
 model PostLike {
-  id        String         @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   postId    String
-  createdAt DateTime       @default(now())
-  
+  createdAt DateTime @default(now())
+
   // Relations
-  user      User           @relation("PostLikes", fields: [userId], references: [id], onDelete: Cascade)
-  post      CommunityPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  
+  user User          @relation("PostLikes", fields: [userId], references: [id], onDelete: Cascade)
+  post CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
   @@unique([userId, postId])
   @@index([userId])
   @@index([postId])
 }
 
 model CommentLike {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   commentId String
-  createdAt DateTime    @default(now())
-  
+  createdAt DateTime @default(now())
+
   // Relations
-  user      User        @relation("CommentLikes", fields: [userId], references: [id], onDelete: Cascade)
-  comment   PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  
+  user    User        @relation("CommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+  comment PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
   @@unique([userId, commentId])
   @@index([userId])
   @@index([commentId])
 }
-
