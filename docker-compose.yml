@@ -6,7 +6,7 @@ services:
     container_name: cc-sporting-events
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "5000:5000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
@@ -15,4 +15,4 @@ services:
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - EMAIL_FROM=${EMAIL_FROM:-}
       - FRONTEND_URL=${FRONTEND_URL:-}
-      - PORT=3000
+      - PORT=5000

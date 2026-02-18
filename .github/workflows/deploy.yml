@@ -1,9 +1,7 @@
 name: Build and Deploy
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -66,32 +64,51 @@ jobs:
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
-          password: ${{ secrets.VM_PASSWORD }}
-          port: ${{ secrets.VM_SSH_PORT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
           script: |
             set -e
 
-            # Navigate to app directory
-            cd ${{ secrets.APP_DIR || '/opt/cc-sporting-events' }}
+            APP_DIR="/opt/cc-sporting-events"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
 
-            # Create/update .env file
-            cat > .env << 'EOF'
+            # Create .env file
+            cat > .env << 'ENVEOF'
             NODE_ENV=production
-            DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            PORT=5000
             DATABASE_URL=${{ secrets.DATABASE_URL }}
-            DIRECT_URL=${{ secrets.DIRECT_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             EMAIL_FROM=${{ secrets.EMAIL_FROM }}
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
-            PORT=3000
-            EOF
+            ENVEOF
+            # Remove leading whitespace from .env values
+            sed -i 's/^[[:space:]]*//' .env
+
+            # Write docker-compose.yml inline
+            cat > docker-compose.yml << 'COMPOSEEOF'
+            version: '3.8'
+
+            services:
+              app:
+                image: ${DOCKER_IMAGE}
+                container_name: cc-sporting-events
+                restart: unless-stopped
+                ports:
+                  - "5000:5000"
+                env_file:
+                  - .env
+            COMPOSEEOF
+
+            # Append DOCKER_IMAGE to .env
+            echo "DOCKER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> .env
 
             # Login to GitHub Container Registry
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # Pull latest image
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
 
             # Stop and remove existing container
             docker compose down --remove-orphans || true
