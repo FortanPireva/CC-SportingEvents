@@ -48,7 +48,7 @@ export const storageService = {
       const fileName = `${folder}/${uniqueId}.${fileExt}`;
 
       // Upload file to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabase!.storage
         .from(BUCKET_NAME)
         .upload(fileName, file, {
           cacheControl: '3600',
@@ -64,7 +64,7 @@ export const storageService = {
       }
 
       // Get public URL
-      const { data: publicUrlData } = supabase.storage
+      const { data: publicUrlData } = supabase!.storage
         .from(BUCKET_NAME)
         .getPublicUrl(data.path);
 
@@ -107,7 +107,7 @@ export const storageService = {
 
       const filePath = pathParts[1];
 
-      const { error } = await supabase.storage
+      const { error } = await supabase!.storage
         .from(BUCKET_NAME)
         .remove([filePath]);
 
