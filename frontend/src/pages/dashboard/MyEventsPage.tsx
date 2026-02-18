@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar, Users, MapPin, Clock, Search, Star, DollarSign, TrendingUp, Eye, Trash2, Plus, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, Users, MapPin, Clock, Search, DollarSign, TrendingUp, Trash2, Plus, CircleCheck as CheckCircle, Circle as XCircle, CircleAlert as AlertCircle, Loader2 } from 'lucide-react';
 import { eventService, Event } from '@/services/event.service';
 import { toast } from 'sonner';
 

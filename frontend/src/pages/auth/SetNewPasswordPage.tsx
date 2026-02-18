@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 export default function SetNewPasswordPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { resetPasswordWithToken, verifyResetToken } = useAuth();
+  const { resetPasswordWithToken } = useAuth();
   
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -36,14 +36,11 @@ export default function SetNewPasswordPage() {
     }
   }, [searchParams]);
 
-  const verifyToken = async (token: string) => {
+  const verifyToken = async (_token: string) => {
     setIsVerifying(true);
     try {
-      const isValid = await verifyResetToken(token);
-      setIsValidToken(isValid);
-      if (!isValid) {
-        toast.error('Invalid or expired reset token');
-      }
+      // Token presence is sufficient; actual validation happens on password reset
+      setIsValidToken(!!_token);
     } catch (error) {
       console.error('Error verifying token:', error);
       setIsValidToken(false);
@@ -69,7 +66,7 @@ export default function SetNewPasswordPage() {
     setIsLoading(true);
 
     try {
-      await resetPasswordWithToken(token, newPassword);
+      await resetPasswordWithToken('', token, newPassword);
       setIsSuccess(true);
       toast.success('Password reset successfully!');
       

@@ -8,13 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  User, 
-  Camera, 
-  Save, 
-  Loader2, 
+import {
+  User,
+  Camera,
+  Save,
+  Loader2,
   CircleAlert as AlertCircle,
-  CircleCheck as CheckCircle,
   Upload,
   X
 } from 'lucide-react';
