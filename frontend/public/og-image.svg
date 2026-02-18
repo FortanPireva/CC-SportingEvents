@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0052CC"/>
+  <!-- Darker overlay on right side for depth -->
+  <rect x="600" y="0" width="600" height="630" fill="#003D99"/>
+
+  <!-- Decorative circles -->
+  <circle cx="950" cy="120" r="200" fill="#0047B3" opacity="0.5"/>
+  <circle cx="1050" cy="400" r="280" fill="#0047B3" opacity="0.4"/>
+  <circle cx="100" cy="550" r="200" fill="#005CE6" opacity="0.3"/>
+
+  <!-- Accent bar at top -->
+  <rect x="0" y="0" width="1200" height="6" fill="#F97316"/>
+
+  <!-- Sports icons (subtle background decoration) -->
+  <!-- Soccer ball outline -->
+  <circle cx="200" cy="180" r="45" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.12"/>
+  <path d="M200 135 L218 158 L211 182 L189 182 L182 158 Z" fill="none" stroke="#FFFFFF" stroke-width="1.5" opacity="0.12"/>
+
+  <!-- Basketball outline -->
+  <circle cx="370" cy="180" r="45" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.12"/>
+  <line x1="325" y1="180" x2="415" y2="180" stroke="#FFFFFF" stroke-width="1.5" opacity="0.12"/>
+  <line x1="370" y1="135" x2="370" y2="225" stroke="#FFFFFF" stroke-width="1.5" opacity="0.12"/>
+
+  <!-- Tennis racket outline -->
+  <ellipse cx="540" cy="170" rx="32" ry="42" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.12"/>
+  <line x1="540" y1="212" x2="540" y2="250" stroke="#FFFFFF" stroke-width="2.5" opacity="0.12"/>
+
+  <!-- Running figure -->
+  <g opacity="0.12" stroke="#FFFFFF" fill="#FFFFFF">
+    <circle cx="700" cy="155" r="14" fill="#FFFFFF" stroke="none"/>
+    <line x1="700" y1="169" x2="700" y2="200" stroke-width="3"/>
+    <line x1="700" y1="200" x2="683" y2="228" stroke-width="3"/>
+    <line x1="700" y1="200" x2="717" y2="228" stroke-width="3"/>
+    <line x1="700" y1="178" x2="682" y2="195" stroke-width="3"/>
+    <line x1="700" y1="178" x2="720" y2="190" stroke-width="3"/>
+  </g>
+
+  <!-- Cycling icon -->
+  <g opacity="0.12" stroke="#FFFFFF" fill="none" stroke-width="2">
+    <circle cx="870" cy="195" r="30"/>
+    <circle cx="940" cy="195" r="30"/>
+    <line x1="870" y1="195" x2="905" y2="165"/>
+    <line x1="905" y1="165" x2="940" y2="195"/>
+    <line x1="905" y1="165" x2="895" y2="155"/>
+    <circle cx="895" cy="148" r="8"/>
+  </g>
+
+  <!-- Main content area -->
+  <!-- CC Logo box -->
+  <rect x="80" y="320" width="64" height="64" rx="14" fill="#F97316"/>
+  <text x="112" y="364" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="bold" fill="#FFFFFF" text-anchor="middle">CC</text>
+
+  <!-- Title -->
+  <text x="164" y="358" font-family="Arial,Helvetica,sans-serif" font-size="52" font-weight="bold" fill="#FFFFFF" letter-spacing="0.5">CC Sporting Events</text>
+
+  <!-- Tagline -->
+  <text x="82" y="420" font-family="Arial,Helvetica,sans-serif" font-size="24" fill="#B3D4FF">Organize, discover, and join local sporting events</text>
+
+  <!-- Feature pills -->
+  <rect x="82" y="458" width="170" height="40" rx="20" fill="#FFFFFF" opacity="0.15"/>
+  <text x="167" y="484" font-family="Arial,Helvetica,sans-serif" font-size="16" fill="#FFFFFF" text-anchor="middle">19+ Sport Types</text>
+
+  <rect x="270" y="458" width="200" height="40" rx="20" fill="#FFFFFF" opacity="0.15"/>
+  <text x="370" y="484" font-family="Arial,Helvetica,sans-serif" font-size="16" fill="#FFFFFF" text-anchor="middle">Community Driven</text>
+
+  <rect x="488" y="458" width="200" height="40" rx="20" fill="#FFFFFF" opacity="0.15"/>
+  <text x="588" y="484" font-family="Arial,Helvetica,sans-serif" font-size="16" fill="#FFFFFF" text-anchor="middle">Real-time Analytics</text>
+
+  <!-- Bottom accent bar -->
+  <rect x="0" y="624" width="1200" height="6" fill="#F97316"/>
+
+  <!-- Domain -->
+  <text x="1118" y="595" font-family="Arial,Helvetica,sans-serif" font-size="16" fill="#B3D4FF" opacity="0.7" text-anchor="end">ccsportingevents.com</text>
+</svg>
