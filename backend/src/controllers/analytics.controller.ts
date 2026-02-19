@@ -1,9 +1,23 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../types';
 import { AnalyticsService } from '../services/analytics.service';
 import { prisma } from '../utils/prisma';
 
 export class AnalyticsController {
+  /**
+   * Get public platform stats for the landing page
+   * GET /api/analytics/public-stats
+   */
+  static async getPublicStats(_req: Request, res: Response) {
+    try {
+      const stats = await AnalyticsService.getPublicStats();
+      res.status(200).json({ success: true, data: stats });
+    } catch (error: any) {
+      console.error('Get public stats error:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch public stats' });
+    }
+  }
+
   /**
    * Get dashboard analytics for the authenticated user
    * GET /api/analytics/dashboard
