@@ -60,7 +60,36 @@ export interface DashboardAnalytics {
   recentActivity: RecentActivity[];
 }
 
+export interface PublicStats {
+  totalUsers: number;
+  totalEvents: number;
+  sportTypesAvailable: number;
+  uniqueLocations: number;
+}
+
 export class AnalyticsService {
+  /**
+   * Get public stats for the landing page (no auth required)
+   */
+  static async getPublicStats(): Promise<PublicStats> {
+    const [totalUsers, totalEvents, sportTypes, locations] = await Promise.all([
+      prisma.user.count(),
+      prisma.event.count(),
+      prisma.event.groupBy({ by: ['sportType'] }),
+      prisma.event.findMany({
+        distinct: ['location'],
+        select: { location: true },
+      }),
+    ]);
+
+    return {
+      totalUsers,
+      totalEvents,
+      sportTypesAvailable: sportTypes.length,
+      uniqueLocations: locations.length,
+    };
+  }
+
   /**
    * Get dashboard analytics for an organizer
    */

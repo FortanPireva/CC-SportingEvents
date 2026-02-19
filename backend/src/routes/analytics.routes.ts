@@ -5,6 +5,13 @@ import { authenticate } from '../middlewares/auth.middleware';
 const router = Router();
 
 /**
+ * @route   GET /api/analytics/public-stats
+ * @desc    Get public platform stats for the landing page
+ * @access  Public
+ */
+router.get('/public-stats', AnalyticsController.getPublicStats);
+
+/**
  * @route   GET /api/analytics/dashboard
  * @desc    Get dashboard analytics for authenticated user (auto-detects organizer vs user)
  * @access  Private
