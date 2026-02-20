@@ -4,7 +4,7 @@ import { SportType, Event, Prisma } from '@prisma/client';
 // Map frontend sport names to backend enum values
 const sportTypeMapping: Record<string, SportType> = {
   'Basketball': SportType.BASKETBALL,
-  'Soccer': SportType.SOCCER,
+  'American Football': SportType.SOCCER,
   'Football': SportType.FOOTBALL,
   'Tennis': SportType.TENNIS,
   'Volleyball': SportType.VOLLEYBALL,
