@@ -8,7 +8,7 @@ export const sportPhotos: SportPhoto[] = [
   {
     sport: 'Football',
     subtitle: 'Where every play tells a story',
-    image: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=1200&h=1600&fit=crop',
+    image: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=1200&h=1600&fit=crop',
   },
   {
     sport: 'Basketball',
@@ -68,7 +68,7 @@ export const sportPhotos: SportPhoto[] = [
   {
     sport: 'Martial Arts',
     subtitle: 'Discipline meets determination',
-    image: 'https://images.unsplash.com/photo-1555597673-b21d5c935865?w=1200&h=1600&fit=crop',
+    image: 'https://images.unsplash.com/photo-1564415315949-7a0c4c73aab4?w=1200&h=1600&fit=crop',
   },
   {
     sport: 'Golf',
@@ -83,22 +83,22 @@ export const sportPhotos: SportPhoto[] = [
   {
     sport: 'Table Tennis',
     subtitle: 'Fast reflexes, fierce rallies',
-    image: 'https://images.unsplash.com/photo-1558743212-d802be1b57e0?w=1200&h=1600&fit=crop',
+    image: 'https://images.unsplash.com/photo-1609710228159-0fa9bd7c0827?w=1200&h=1600&fit=crop',
   },
   {
     sport: 'Cricket',
-    subtitle: 'A gentleman\'s game of passion',
-    image: 'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=1200&h=1600&fit=crop',
+    subtitle: 'Bat, ball, and a billion fans',
+    image: 'https://images.unsplash.com/photo-1599982946086-eb42d9e14eb8?w=1200&h=1600&fit=crop',
   },
   {
     sport: 'Rugby',
     subtitle: 'Grit, glory, and teamwork',
-    image: 'https://images.unsplash.com/photo-1544298621-77b8e50a4025?w=1200&h=1600&fit=crop',
+    image: 'https://images.unsplash.com/photo-1686828601235-24f8dbfde37e?w=1200&h=1600&fit=crop',
   },
   {
     sport: 'Hockey',
     subtitle: 'Speed on ice, fire in the heart',
-    image: 'https://images.unsplash.com/photo-1580748142767-f6612d432788?w=1200&h=1600&fit=crop',
+    image: 'https://images.unsplash.com/photo-1515703407324-5f753afd8be8?w=1200&h=1600&fit=crop',
   },
   {
     sport: 'Baseball',
