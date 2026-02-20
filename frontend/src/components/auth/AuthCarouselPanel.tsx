@@ -35,6 +35,16 @@ export default function AuthCarouselPanel() {
     };
   }, [api, onSelect]);
 
+  useEffect(() => {
+    if (!api) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') api.scrollPrev();
+      if (e.key === 'ArrowRight') api.scrollNext();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [api]);
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-gray-900">
       {/* Decorative floating shapes */}
