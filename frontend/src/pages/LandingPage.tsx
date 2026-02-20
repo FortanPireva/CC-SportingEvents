@@ -268,7 +268,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-display text-2xl font-bold text-gray-950 mb-3">Discover Events</h3>
               <p className="text-gray-500 leading-relaxed mb-6">
-                Browse basketball, soccer, tennis, hiking, and 16+ other sports. Filter by distance, skill level, and time &mdash; your perfect event is one search away.
+                Browse basketball, football, tennis, hiking, and 16+ other sports. Filter by distance, skill level, and time &mdash; your perfect event is one search away.
               </p>
               <div className="space-y-2.5">
                 {['Filter by 20 sport types', 'See skill level & spots left', 'Real-time availability updates'].map((item, i) => (
@@ -409,7 +409,7 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-wrap justify-center gap-2.5 max-w-3xl mx-auto">
             {[
-              'Football', 'Basketball', 'Soccer', 'Tennis', 'Volleyball',
+              'Football', 'Basketball', 'American Football', 'Tennis', 'Volleyball',
               'Running', 'Cycling', 'Swimming', 'Hiking', 'Yoga',
               'Pilates', 'Boxing', 'Martial Arts', 'Golf', 'Badminton',
               'Table Tennis', 'Cricket', 'Rugby', 'Hockey', 'Baseball',
